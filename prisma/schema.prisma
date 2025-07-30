@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model usuarios {
+  id                 Int                  @id @default(autoincrement())
+  nombre             String?
+  apellidos          String?
+  email              String?              @unique
+  password           String?
+  departamentos_id   Int?
+  activo             Int?
+  documentos         documentos[]
+  favoritos          favoritos[]
+  usuarios_has_roles usuarios_has_roles[]
+}
+
+model documentos {
+  id                  Int               @id @default(autoincrement())
+  nombre              String?
+  descripcion         String?
+  mime                String?
+  ruta                String?
+  tipos_documentos_id Int?
+  usuarios_id         Int?
+  fecha_subida        DateTime?
+  tipos_documentos    tipos_documentos? @relation(fields: [tipos_documentos_id], references: [id])
+  usuarios            usuarios?         @relation(fields: [usuarios_id], references: [id])
+  favoritos           favoritos[]
+
+  @@index([tipos_documentos_id], map: "tipos_documentos_id")
+  @@index([usuarios_id], map: "usuarios_id")
+}
+
+model favoritos {
+  id           Int        @id @default(autoincrement())
+  documento_id Int
+  fecha        DateTime   @default(now())
+  usuario_id   Int
+  documento    documentos @relation(fields: [documento_id], references: [id])
+  usuario      usuarios   @relation(fields: [usuario_id], references: [id])
+
+  @@unique([usuario_id, documento_id])
+  @@index([documento_id], map: "favoritos_documento_id_fkey")
+}
+
+model departamentos {
+  id          Int      @id @default(autoincrement())
+  nombre      String?
+  descripcion String?
+  activo      Boolean?
+}
+
+model periodos {
+  id           Int       @id @default(autoincrement())
+  periodo      String?
+  fecha_inicio DateTime?
+  fecha_final  DateTime?
+  activo       Boolean?
+}
+
+model procesos {
+  id               Int                 @id @default(autoincrement())
+  estatus          procesos_estatus
+  resultado        procesos_resultado?
+  fecha_inicio     DateTime?
+  fecha_fin        DateTime?
+  departamentos_id Int?
+  periodos_id      Int?
+}
+
+model roles {
+  id                 Int                  @id @default(autoincrement())
+  tipo               roles_tipo
+  descripcion        String?
+  activo             Boolean?
+  fecha_creacion     DateTime?
+  usuarios_has_roles usuarios_has_roles[]
+}
+
+model tipos_documentos {
+  id         Int          @id @default(autoincrement())
+  tipo       String?
+  documentos documentos[]
+}
+
+model usuarios_has_roles {
+  usuarios_id Int
+  roles_id    Int
+  roles       roles    @relation(fields: [roles_id], references: [id])
+  usuarios    usuarios @relation(fields: [usuarios_id], references: [id])
+
+  @@id([usuarios_id, roles_id])
+  @@index([roles_id], map: "usuarios_has_roles_roles_id_fkey")
+}
+
+model bitacora {
+  id           Int       @id @default(autoincrement())
+  usuario_id   Int?
+  rol          String?
+  accion       String?
+  ip           String?
+  descripcion  String?
+  fecha_inicio DateTime?
+  fecha_act    DateTime?
+}
+
+enum procesos_estatus {
+  en_proceso
+  terminado
+}
+
+enum procesos_resultado {
+  aprobado
+  rechazado
+  en_revision
+}
+
+enum roles_tipo {
+  admin
+  capturista
+  revisor
+}
