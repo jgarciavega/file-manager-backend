@@ -5,36 +5,58 @@ const { successResponse, errorResponse } = require("../utils/responses");
 
 const prisma = new PrismaClient();
 
-// GET /api/roles - Obtener todos los roles
-router.get("/", async (req, res) => {
+// GET /api/roles - Obtener todos los roles (público)
+router.get('/', async (req, res) => {
   try {
-    const { activo, tipo, page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 100, includeUsers } = req.query;
     const skip = (page - 1) * limit;
-
-    const where = {};
-    if (activo !== undefined) where.activo = activo === "true";
-    if (tipo) where.tipo = tipo;
+    const wantUsers = includeUsers === '1' || includeUsers === 'true';
 
     const roles = await prisma.roles.findMany({
-      where,
       skip: parseInt(skip),
       take: parseInt(limit),
-      include: {
-        usuarios_has_roles: {
-          include: {
-            usuarios: {
-              select: { id: true, nombre: true, apellidos: true, email: true },
-            },
-          },
-        },
-      },
-      orderBy: { fecha_creacion: "desc" },
+      ...(wantUsers
+        ? {
+            include: {
+              usuarios: {
+                include: {
+                  usuario: {
+                    select: {
+                      id: true,
+                      nombre: true,
+                      apellidos: true,
+                      email: true,
+                      activo: true,
+                    }
+                  }
+                }
+              }
+            }
+          }
+        : { select: { id: true, name: true, descripcion: true } }),
     });
 
-    const total = await prisma.roles.count({ where });
+    const total = await prisma.roles.count();
+
+    // Si queremos usuarios, mapear de forma consistente el shape
+    const payloadRoles = roles.map((r) => {
+      if (!wantUsers) return r;
+      // Dependiendo del relation name, prisma puede devolver 'usuarios' o 'usuario_roles'
+      // Normalizar: extraer usuarios desde la relación intermedia
+      if (r.usuarios) {
+        return {
+          id: r.id,
+          name: r.name || r.tipo || null,
+          descripcion: r.descripcion || null,
+          usuarios: r.usuarios.map((ur) => ur.usuario),
+        };
+      }
+      // fallback
+      return { id: r.id, name: r.name || r.tipo || null, descripcion: r.descripcion || null };
+    });
 
     return successResponse(res, {
-      roles,
+      roles: payloadRoles,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -44,7 +66,28 @@ router.get("/", async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return errorResponse(res, "Error al obtener roles", 500, error.message);
+    return errorResponse(res, 'Error al obtener roles', 500, error.message);
+  }
+});
+
+// GET /api/roles/me - roles del usuario autenticado
+router.get('/me', async (req, res) => {
+  try {
+    // loadUserRoles middleware puede poblar req.user.roles, pero aceptamos también que req.user ya tenga roles
+    if (!req.user || !req.user.id) return errorResponse(res, 'No autenticado', 401);
+    // Si loadUserRoles no se ejecutó, cargar roles aquí
+    if (!req.user.roles) {
+      const usuario = await prisma.usuarios.findUnique({
+        where: { id: req.user.id },
+        include: { roles: { include: { role: true } } }
+      });
+      req.user.roles = usuario?.roles?.map(r => r.role.name) || [];
+    }
+
+    return successResponse(res, { id: req.user.id, email: req.user.email, roles: req.user.roles });
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, 'Error al obtener roles del usuario', 500, error.message);
   }
 });
 

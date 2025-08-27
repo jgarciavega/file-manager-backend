@@ -31,6 +31,7 @@ model usuarios {
   activo     Int?         @default(1)
   documentos documentos[]
   bitacora   bitacora[]
+  roles      usuario_roles[]
 }
 
 model documentos {
@@ -49,9 +50,26 @@ model tipos_documentos {
   tipo String?
 }
 
+model roles {
+  id          Int             @id @default(autoincrement())
+  name        String          @unique
+  descripcion String?
+  usuarios    usuario_roles[]
+}
+
+model usuario_roles {
+  usuario_id Int
+  role_id    Int
+  usuario    usuarios @relation(fields: [usuario_id], references: [id])
+  role       roles    @relation(fields: [role_id], references: [id])
+
+  @@id([usuario_id, role_id])
+}
+
 model bitacora {
   id           Int      @id @default(autoincrement())
   usuario_id   Int?
+  rol          String?
   accion       String
   detalles     String?
   fecha_inicio DateTime @default(now())

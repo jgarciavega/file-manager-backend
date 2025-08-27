@@ -15,6 +15,8 @@ router.get('/', async (req, res) => {
     const where = {};
     if (activo !== undefined) where.activo = parseInt(activo);
 
+    const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
+
     const usuarios = await prisma.usuarios.findMany({
       where,
       skip: parseInt(skip),
@@ -27,7 +29,8 @@ router.get('/', async (req, res) => {
         activo: true,
         documentos: {
           select: { id: true, nombre: true, fecha_subida: true }
-        }
+        },
+        ...(includeRoles && { roles: { include: { role: true } } })
       }
     });
 
@@ -49,10 +52,79 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/usuarios/:id - Obtener usuario por ID
+// GET /api/usuarios/view - Vista enriquecida: usuarios con roles, conteo de documentos y última acción
+router.get('/view', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, role, activo } = req.query;
+    const skip = (page - 1) * limit;
+
+    const where = {};
+    if (activo !== undefined) where.activo = parseInt(activo);
+
+    // Si se filtra por role, obtener user ids que tienen ese role
+    let usuarioIdsFilter = null;
+    if (role) {
+      const urs = await prisma.usuario_roles.findMany({ where: { role: { name: role } }, select: { usuario_id: true } });
+      usuarioIdsFilter = urs.map(u => u.usuario_id);
+      if (usuarioIdsFilter.length === 0) {
+        return successResponse(res, { usuarios: [], pagination: { page: parseInt(page), limit: parseInt(limit), total: 0, pages: 0 } });
+      }
+      where.id = { in: usuarioIdsFilter };
+    }
+
+    const usuarios = await prisma.usuarios.findMany({
+      where,
+      skip: parseInt(skip),
+      take: parseInt(limit),
+      select: {
+        id: true,
+        nombre: true,
+        apellidos: true,
+        email: true,
+        activo: true,
+      }
+    });
+
+    const total = await prisma.usuarios.count({ where });
+
+    // enriquecer
+    const enriched = await Promise.all(usuarios.map(async (u) => {
+      const rolesRel = await prisma.usuario_roles.findMany({ where: { usuario_id: u.id }, include: { role: true } });
+      const roles = rolesRel.map(r => r.role.name);
+
+      const docsCount = await prisma.documentos.count({ where: { usuarios_id: u.id } });
+
+      const lastAct = await prisma.bitacora.findFirst({ where: { usuario_id: u.id }, orderBy: { fecha_inicio: 'desc' } });
+
+      return {
+        ...u,
+        roles,
+        documentCount: docsCount,
+        lastAction: lastAct ? { accion: lastAct.accion, fecha_inicio: lastAct.fecha_inicio, detalles: lastAct.detalles } : null
+      };
+    }));
+
+    return successResponse(res, {
+      usuarios: enriched,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, 'Error al obtener vista de usuarios', 500, error.message);
+  }
+});
+
+// GET /api/usuarios/:id - Obtener usuario por ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
+    const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
     const usuario = await prisma.usuarios.findUnique({
       where: { id: parseInt(id) },
       select: {
@@ -61,7 +133,8 @@ router.get('/:id', async (req, res) => {
         apellidos: true,
         email: true,
         activo: true,
-        documentos: true
+        documentos: true,
+        ...(includeRoles && { roles: { include: { role: true } } })
       }
     });
 
@@ -192,4 +265,49 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/usuarios/:id/roles - Asignar rol a usuario
+router.post('/:id/roles', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role_name } = req.body;
+
+    if (!role_name) return errorResponse(res, 'role_name es requerido', 400);
+
+    const role = await prisma.roles.findUnique({ where: { name: role_name } });
+    if (!role) return errorResponse(res, 'Rol no encontrado', 404);
+
+    await prisma.usuario_roles.upsert({
+      where: { usuario_id_role_id: { usuario_id: parseInt(id), role_id: role.id } },
+      update: {},
+      create: { usuario_id: parseInt(id), role_id: role.id }
+    });
+
+    return successResponse(res, null, 'Rol asignado al usuario');
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, 'Error al asignar rol', 500, error.message);
+  }
+});
+
+// DELETE /api/usuarios/:id/roles - Quitar rol a usuario
+router.delete('/:id/roles', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role_name } = req.body;
+
+    if (!role_name) return errorResponse(res, 'role_name es requerido', 400);
+
+    const role = await prisma.roles.findUnique({ where: { name: role_name } });
+    if (!role) return errorResponse(res, 'Rol no encontrado', 404);
+
+    await prisma.usuario_roles.delete({ where: { usuario_id_role_id: { usuario_id: parseInt(id), role_id: role.id } } });
+
+    return successResponse(res, null, 'Rol eliminado del usuario');
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, 'Error al eliminar rol', 500, error.message);
+  }
+});
+
+// EXPORT ROUTER AT THE END
 module.exports = router;

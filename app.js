@@ -18,11 +18,16 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const usuariosRoutes = require("./src/routes/usuarios");
 const documentosRoutes = require("./src/routes/documentos");
 const bitacoraRoutes = require("./src/routes/bitacora");
+const rolesRoutes = require("./src/routes/roles");
+const { loadUserRoles } = require('./src/middleware/roles');
 
 // Usar rutas
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/documentos", documentosRoutes);
 app.use("/api/bitacora", bitacoraRoutes.router || bitacoraRoutes);
+// Cargar roles en req.user si existe (no interrumpe si no hay auth)
+app.use(loadUserRoles);
+app.use('/api/roles', rolesRoutes);
 
 // Ruta de prueba
 app.get("/", (req, res) => {
