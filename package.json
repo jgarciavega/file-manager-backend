@@ -10,6 +10,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:reset": "prisma migrate reset",
+    "seed": "node scripts/seed_users.js && node scripts/seed_roles.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

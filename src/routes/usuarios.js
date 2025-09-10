@@ -123,10 +123,16 @@ router.get('/view', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
+    // Validar que el ID esté presente y sea un entero válido
+    const parsedId = id !== undefined ? parseInt(id, 10) : NaN;
+    if (id === undefined || Number.isNaN(parsedId)) {
+      return errorResponse(res, 'ID inválido o ausente', 400, "Argument 'id' is missing or invalid.");
+    }
+
     const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
     const usuario = await prisma.usuarios.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: parsedId },
       select: {
         id: true,
         nombre: true,
@@ -152,6 +158,11 @@ router.get('/:id', async (req, res) => {
 // POST /api/usuarios - Crear nuevo usuario
 router.post('/', async (req, res) => {
   try {
+    // Validar que el body exista (evita crash cuando req.body es undefined)
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return errorResponse(res, 'Body vacío o inválido. Asegúrate de enviar JSON y Content-Type: application/json', 400);
+    }
+
     const { nombre, apellidos, email, password, activo = 1 } = req.body;
 
     // Validaciones básicas

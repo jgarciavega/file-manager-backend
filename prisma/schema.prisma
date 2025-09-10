@@ -57,7 +57,7 @@ model roles {
   usuarios    usuario_roles[]
 }
 
-model usuario_roles {
+model usuario_roles { 
   usuario_id Int
   role_id    Int
   usuario    usuarios @relation(fields: [usuario_id], references: [id])
