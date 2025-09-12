@@ -23,22 +23,21 @@ const storage = multer.diskStorage({
   }
 });
 
-// límites y filtro MIME
+// límites y filtro MIME: sólo PDF, Word y Excel; tamaño máximo 50MB
 const ALLOWED_MIMES = [
   'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/gif',
-  'text/plain',
-  'text/markdown'
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 ];
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
   fileFilter: (req, file, cb) => {
     if (ALLOWED_MIMES.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Tipo de archivo no permitido'));
+    else cb(new Error('Tipo de archivo no permitido. Solo PDF, Word y Excel.'));
   }
 });
 
@@ -85,9 +84,11 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+    const docId = parseInt(id);
+    if (isNaN(docId)) return errorResponse(res, 'ID inválido', 400);
+
     const documento = await prisma.documentos.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: docId },
       include: {
         usuarios: {
           select: { id: true, nombre: true, apellidos: true, email: true }
@@ -157,7 +158,9 @@ router.post('/', async (req, res) => {
           data: {
             usuario_id: parseInt(usuarios_id) || null,
             accion: 'creacion',
-            detalles: `Creó documento ${nuevoDocumento.nombre} -> ${nuevoDocumento.ruta}`
+            descripcion: `Creó documento ${nuevoDocumento.nombre} -> ${nuevoDocumento.ruta}`,
+            fecha_inicio: new Date(),
+            fecha_act: new Date()
           }
         });
       } catch (e) {
@@ -188,8 +191,11 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const { nombre, descripcion, mime, ruta } = req.body;
 
-  const documentoExistente = await prisma.documentos.findUnique({
-      where: { id: parseInt(id) }
+    const docId = parseInt(id);
+    if (isNaN(docId)) return errorResponse(res, 'ID inválido', 400);
+
+    const documentoExistente = await prisma.documentos.findUnique({
+      where: { id: docId }
     });
 
     if (!documentoExistente) {
@@ -197,7 +203,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const documentoActualizado = await prisma.documentos.update({
-      where: { id: parseInt(id) },
+  where: { id: docId },
       data: {
         ...(nombre && { nombre }),
         ...(descripcion && { descripcion }),
@@ -219,7 +225,9 @@ router.put('/:id', async (req, res) => {
           data: {
             usuario_id: usuarioId,
             accion: 'actualizacion',
-            detalles: `Actualizó documento ${documentoActualizado.id} (${documentoActualizado.nombre})`
+            descripcion: `Actualizó documento ${documentoActualizado.id} (${documentoActualizado.nombre})`,
+            fecha_inicio: new Date(),
+            fecha_act: new Date()
           }
         });
       } catch (e) {
@@ -266,7 +274,9 @@ router.delete('/:id', async (req, res) => {
           data: {
             usuario_id: documentoExistente.usuarios_id || null,
             accion: 'eliminacion',
-            detalles: `Eliminó documento ${documentoExistente.id} (${documentoExistente.nombre})`
+            descripcion: `Eliminó documento ${documentoExistente.id} (${documentoExistente.nombre})`,
+            fecha_inicio: new Date(),
+            fecha_act: new Date()
           }
         });
       } catch (e) {
@@ -280,8 +290,6 @@ router.delete('/:id', async (req, res) => {
     return errorResponse(res, 'Error al eliminar documento', 500, error.message);
   }
 });
-
-module.exports = router;
 
 // POST /api/documentos/upload - Subir archivo y registrar en bitacora
 router.post('/upload', upload.single('file'), async (req, res) => {
@@ -316,7 +324,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         data: {
           usuario_id: parseInt(usuarios_id),
           accion: 'subida',
-          detalles: `Subió archivo ${originalname} (${size} bytes) -> ${nuevoDocumento.ruta}`
+          descripcion: `Subió archivo ${originalname} (${size} bytes) -> ${nuevoDocumento.ruta}`,
+          fecha_inicio: new Date(),
+          fecha_act: new Date()
         }
       });
 
@@ -346,3 +356,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     return errorResponse(res, 'Error al subir archivo', 500, error.message);
   }
 });
+
+// Exportar router
+module.exports = router;

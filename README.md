@@ -186,21 +186,3 @@ npm run prisma:reset      # Reset completo de DB
 2. Ejecutar migraciones: `npm run prisma:deploy`
 3. Generar cliente: `npm run prisma:generate`
 4. Iniciar servidor: `npm start`
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia ISC.
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Por favor:
-
-1. Haz fork del proyecto
-2. Crea una rama para tu feature
-3. Commit tus cambios
-4. Push a la rama
-5. Abre un Pull Request
-
-## 📞 Soporte
-
-Para soporte o preguntas, por favor contacta al equipo de desarrollo.
