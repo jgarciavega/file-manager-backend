@@ -9,11 +9,11 @@ async function loadUserRoles(req, res, next) {
 
     const usuario = await prisma.usuarios.findUnique({
       where: { id: req.user.id },
-      include: { roles: { include: { role: true } } }
+      include: { role: true }
     });
 
-    if (usuario && usuario.roles) {
-      req.user.roles = usuario.roles.map((ur) => ur.role.name);
+    if (usuario && usuario.role) {
+      req.user.roles = [usuario.role.tipo];
     } else {
       req.user.roles = [];
     }

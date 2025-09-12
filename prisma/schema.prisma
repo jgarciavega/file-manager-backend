@@ -7,71 +7,167 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---------------------------------------------------------------------------
-// MySQL (opcional)
-// Para usar MySQL en lugar de SQLite:
-// 1) Asegúrate de tener una base MySQL accesible.
-// 2) Actualiza la variable DATABASE_URL en el archivo `.env` con la cadena
-//    de conexión MySQL: mysql://USER:PASSWORD@HOST:PORT/DATABASE
-// 3) Reemplaza el bloque `datasource db { ... }` anterior por este (o descomenta
-//    y ajusta):
-// datasource db {
-//   provider = "mysql"
-//   url      = env("DATABASE_URL")
-// }
-// 4) Ejecuta `npx prisma generate` y `npx prisma migrate dev --name init` para
-//    crear las tablas en MySQL.
-// ---------------------------------------------------------------------------
 model usuarios {
-  id         Int          @id @default(autoincrement())
-  nombre     String?
-  apellidos  String?
-  email      String?      @unique
-  password   String?
-  activo     Int?         @default(1)
-  documentos documentos[]
-  bitacora   bitacora[]
-  roles      usuario_roles[]
+  id                 Int                  @id @default(autoincrement())
+  nombre             String?
+  apellidos          String?
+  email              String?              @unique
+  password           String?
+  departamentos_id   Int?
+  departamentos      departamentos?       @relation(fields: [departamentos_id], references: [id], onDelete: SetNull)
+  role_id            Int?
+  role               roles?               @relation(fields: [role_id], references: [id], onDelete: SetNull)
+  activo             Int?
+  documentos         documentos[]
+  favoritos          favoritos[]
+  bitacora           bitacora[]
 }
 
 model documentos {
-  id           Int       @id @default(autoincrement())
-  nombre       String?
-  descripcion  String?
-  mime         String?
-  ruta         String?
-  usuarios_id  Int?
-  fecha_subida DateTime? @default(now())
-  usuarios     usuarios? @relation(fields: [usuarios_id], references: [id])
+  id                  Int               @id @default(autoincrement())
+  nombre              String?
+  descripcion         String?
+  mime                String?
+  ruta                String?
+  file_key            String?
+  size                Int?
+  checksum            String?
+  tipos_documentos_id Int?
+  usuarios_id         Int?
+  fecha_creacion      DateTime?
+  fecha_subida        DateTime?
+    // Jefatura responsable (relación a `departamentos` en lugar de texto libre)
+  departamentos_id    Int?
+  nivel_acceso        NivelAcceso?
+  codigo_clasificacion String?
+  numero_expediente   String?
+  serie               String?
+  subserie            String?
+  valor_documental    ValorDocumental?
+  plazo_conservacion  String?
+    // Referencia a `periodos` (si el formulario requiere seleccionar un periodo/plazo)
+  periodos_id         Int?
+  destino_final       String?
+  soporte             Soporte?
+  procedencia         String?
+  folio               String?
+  tipo_documento_text String?
+  estado_vigencia     String?
+  tipos_documentos    tipos_documentos? @relation(fields: [tipos_documentos_id], references: [id], onDelete: SetNull)
+  usuarios            usuarios?         @relation(fields: [usuarios_id], references: [id], onDelete: SetNull)
+  departamentos       departamentos?     @relation(fields: [departamentos_id], references: [id], onDelete: SetNull)
+  periodos            periodos?          @relation(fields: [periodos_id], references: [id], onDelete: SetNull)
+  favoritos           favoritos[]
+
+  @@index([tipos_documentos_id], map: "tipos_documentos_id")
+  @@index([usuarios_id], map: "usuarios_id")
+  @@index([departamentos_id], map: "documentos_departamentos_id_idx")
+  @@index([periodos_id], map: "documentos_periodos_id_idx")
 }
 
-model tipos_documentos {
-  id   Int     @id @default(autoincrement())
-  tipo String?
+model favoritos {
+  id           Int        @id @default(autoincrement())
+  documento_id Int
+  fecha        DateTime   @default(now())
+  usuario_id   Int
+  documento    documentos @relation(fields: [documento_id], references: [id], onDelete: Cascade)
+  usuario      usuarios   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@unique([usuario_id, documento_id])
+  @@index([documento_id], map: "favoritos_documento_id_fkey")
+}
+
+model departamentos {
+  id          Int      @id @default(autoincrement())
+  nombre      String?
+  descripcion String?
+  activo      Boolean?
+  documentos  documentos[]
+  usuarios    usuarios[]
+  procesos    procesos[]
+}
+
+model periodos {
+  id           Int       @id @default(autoincrement())
+  periodo      String?
+  fecha_inicio DateTime?
+  fecha_final  DateTime?
+  activo       Boolean?
+  documentos   documentos[]
+  procesos     procesos[]
+}
+
+model procesos {
+  id               Int                 @id @default(autoincrement())
+  estatus          procesos_estatus
+  resultado        procesos_resultado?
+  fecha_inicio     DateTime?
+  fecha_fin        DateTime?
+  departamentos_id Int?
+  periodos_id      Int?
+  departamentos     departamentos?      @relation(fields: [departamentos_id], references: [id], onDelete: SetNull)
+  periodos          periodos?           @relation(fields: [periodos_id], references: [id], onDelete: SetNull)
 }
 
 model roles {
-  id          Int             @id @default(autoincrement())
-  name        String          @unique
-  descripcion String?
-  usuarios    usuario_roles[]
+  id                 Int                  @id @default(autoincrement())
+  tipo               roles_tipo
+  descripcion        String?
+  activo             Boolean?
+  fecha_creacion     DateTime?
+  usuarios           usuarios[]
 }
 
-model usuario_roles {
-  usuario_id Int
-  role_id    Int
-  usuario    usuarios @relation(fields: [usuario_id], references: [id])
-  role       roles    @relation(fields: [role_id], references: [id])
-
-  @@id([usuario_id, role_id])
+model tipos_documentos {
+  id         Int          @id @default(autoincrement())
+  tipo       String?
+  documentos documentos[]
 }
+
+// Nota: la tabla pivote `usuarios_has_roles` se eliminó porque ahora cada usuario tiene un solo rol (`usuarios.role_id`).
 
 model bitacora {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   usuario_id   Int?
   rol          String?
-  accion       String
-  detalles     String?
-  fecha_inicio DateTime @default(now())
-  usuarios     usuarios? @relation(fields: [usuario_id], references: [id])
+  accion       String?
+  ip           String?
+  descripcion  String?
+  fecha_inicio DateTime?
+  fecha_act    DateTime?
+  usuario      usuarios? @relation(fields: [usuario_id], references: [id], onDelete: SetNull)
+}
+
+enum procesos_estatus {
+  en_proceso
+  terminado
+}
+
+enum procesos_resultado {
+  aprobado
+  rechazado
+  en_revision
+}
+
+enum roles_tipo {
+  admin
+  capturista
+  revisor
+}
+
+enum NivelAcceso {
+  PUBLIC
+  CONFIDENTIAL
+  RESTRICTED
+}
+
+enum ValorDocumental {
+  TEMPORAL
+  PERMANENT
+}
+
+enum Soporte {
+  DIGITAL
+  FISICO
+  HIBRIDO
 }

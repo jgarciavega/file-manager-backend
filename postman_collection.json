@@ -1,0 +1,107 @@
+{
+  "info": {
+    "name": "File Manager Backend API",
+    "description": "Colección Postman para los endpoints del proyecto file-manager-backend (CRUD completos y subida de archivos)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.1"
+  },
+  "item": [
+    {
+      "name": "Usuarios",
+      "item": [
+        {
+          "name": "Listar usuarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/usuarios?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api","usuarios"],
+              "query": [
+                {"key":"page","value":"1"},
+                {"key":"limit","value":"20"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener usuario por id",
+          "request": {"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/usuarios/:id","host":["{{base_url}}"],"path":["api","usuarios",":id"]}}
+        },
+        {
+          "name": "Crear usuario",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"nombre\": \"Nombre\",\n  \"apellidos\": \"Apellidos\",\n  \"email\": \"user@example.com\",\n  \"password\": \"Secret123!\"\n}"},
+            "url": {"raw":"{{base_url}}/api/usuarios","host":["{{base_url}}"],"path":["api","usuarios"]}
+          }
+        },
+        {
+          "name": "Actualizar usuario",
+          "request": {
+            "method": "PUT",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{ \"nombre\": \"Nuevo nombre\", \"apellidos\": \"Cambios\" }"},
+            "url": {"raw":"{{base_url}}/api/usuarios/:id","host":["{{base_url}}"],"path":["api","usuarios",":id"]}
+          }
+        },
+        {"name":"Eliminar usuario","request":{"method":"DELETE","header":[],"url":{"raw":"{{base_url}}/api/usuarios/:id","host":["{{base_url}}"],"path":["api","usuarios",":id"]}}},
+        {"name":"Asignar rol (tipo)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"role_tipo\": \"capturista\" }"},"url":{"raw":"{{base_url}}/api/usuarios/:id/roles","host":["{{base_url}}"],"path":["api","usuarios",":id","roles"]}}},
+        {"name":"Quitar rol (tipo)","request":{"method":"DELETE","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"role_tipo\": \"capturista\" }"},"url":{"raw":"{{base_url}}/api/usuarios/:id/roles","host":["{{base_url}}"],"path":["api","usuarios",":id","roles"]}}}
+      ]
+    },
+    {
+      "name": "Documentos",
+      "item": [
+        {"name":"Listar documentos","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/documentos?page=1&limit=20","host":["{{base_url}}"],"path":["api","documentos"],"query":[{"key":"page","value":"1"},{"key":"limit","value":"20"}]}}},
+        {"name":"Obtener documento por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/documentos/:id","host":["{{base_url}}"],"path":["api","documentos",":id"]}}},
+        {"name":"Crear documento (metadata)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nombre\": \"Acta de Reunión\",\n  \"descripcion\": \"Acta de la reunión trimestral\",\n  \"mime\": \"application/pdf\",\n  \"ruta\": \"uploads/acta-trimestral.pdf\",\n  \"usuarios_id\": 1,\n  \"tipos_documentos_id\": 1,\n  \"departamentos_id\": 1,\n  \"periodos_id\": 1\n}"},"url":{"raw":"{{base_url}}/api/documentos","host":["{{base_url}}"],"path":["api","documentos"]}}},
+        {"name":"Actualizar documento","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"nombre\": \"Acta actualizada\" }"},"url":{"raw":"{{base_url}}/api/documentos/:id","host":["{{base_url}}"],"path":["api","documentos",":id"]}}},
+        {"name":"Eliminar documento","request":{"method":"DELETE","header":[],"url":{"raw":"{{base_url}}/api/documentos/:id","host":["{{base_url}}"],"path":["api","documentos",":id"]}}},
+        {"name":"Subir archivo (multipart) - solo pdf/docx/xlsx, 50MB max","request":{"method":"POST","header":[{"key":"Content-Type","value":"multipart/form-data"}],"body":{"mode":"formdata","formdata":[{"key":"file","type":"file"},{"key":"usuarios_id","value":"1","type":"text"},{"key":"descripcion","value":"Subida de prueba","type":"text"},{"key":"tipos_documentos_id","value":"1","type":"text"},{"key":"departamentos_id","value":"1","type":"text"},{"key":"periodos_id","value":"1","type":"text"}]},"url":{"raw":"{{base_url}}/api/documentos/upload","host":["{{base_url}}"],"path":["api","documentos","upload"]}}}
+      ]
+    },
+    {
+      "name": "Bitacora",
+      "item": [
+        {"name":"Listar bitacora","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/bitacora?page=1&limit=20","host":["{{base_url}}"],"path":["api","bitacora"],"query":[{"key":"page","value":"1"},{"key":"limit","value":"20"}]}}},
+        {"name":"Obtener registro bitacora","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/bitacora/:id","host":["{{base_url}}"],"path":["api","bitacora",":id"]}}},
+        {"name":"Crear registro bitacora","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"accion\": \"subida\", \"descripcion\": \"Se subió un archivo\", \"usuarios_id\": 1 }"},"url":{"raw":"{{base_url}}/api/bitacora","host":["{{base_url}}"],"path":["api","bitacora"]}}}
+      ]
+    },
+    {
+      "name": "Roles",
+      "item": [
+        {"name":"Listar roles","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/roles","host":["{{base_url}}"],"path":["api","roles"]}}},
+        {"name":"Obtener rol por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/roles/:id","host":["{{base_url}}"],"path":["api","roles",":id"]}}}
+      ]
+    },
+    {
+      "name": "Departamentos",
+      "item": [
+        {"name":"Listar departamentos","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/departamentos","host":["{{base_url}}"],"path":["api","departamentos"]}}},
+        {"name":"Crear departamento","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"nombre\": \"Finanzas\" }"},"url":{"raw":"{{base_url}}/api/departamentos","host":["{{base_url}}"],"path":["api","departamentos"]}}}
+      ]
+    },
+    {
+      "name": "Favoritos",
+      "item": [
+        {"name":"Listar favoritos","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/favoritos","host":["{{base_url}}"],"path":["api","favoritos"]}}},
+        {"name":"Crear favorito","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"documento_id\": 1, \"usuario_id\": 1 }"},"url":{"raw":"{{base_url}}/api/favoritos","host":["{{base_url}}"],"path":["api","favoritos"]}}}
+      ]
+    },
+    {
+      "name": "Tipos de Documentos",
+      "item": [
+        {"name":"Listar tipos","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/tiposDocumentos","host":["{{base_url}}"],"path":["api","tiposDocumentos"]}}},
+        {"name":"Obtener tipo por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/tiposDocumentos/:id","host":["{{base_url}}"],"path":["api","tiposDocumentos",":id"]}}}
+      ]
+    }
+  ],
+  "variable": [
+    {"key":"base_url","value":"http://localhost:4000"},
+    {"key":"token","value":""}
+  ]
+}

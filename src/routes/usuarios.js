@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
     const where = {};
     if (activo !== undefined) where.activo = parseInt(activo);
 
-    const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
+  const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
 
     const usuarios = await prisma.usuarios.findMany({
       where,
@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
         documentos: {
           select: { id: true, nombre: true, fecha_subida: true }
         },
-        ...(includeRoles && { roles: { include: { role: true } } })
+  ...(includeRoles && { role: true })
       }
     });
 
@@ -61,15 +61,13 @@ router.get('/view', async (req, res) => {
     const where = {};
     if (activo !== undefined) where.activo = parseInt(activo);
 
-    // Si se filtra por role, obtener user ids que tienen ese role
-    let usuarioIdsFilter = null;
+    // Si se filtra por role, buscar usuarios por role.tipo (campo en roles)
     if (role) {
-      const urs = await prisma.usuario_roles.findMany({ where: { role: { name: role } }, select: { usuario_id: true } });
-      usuarioIdsFilter = urs.map(u => u.usuario_id);
-      if (usuarioIdsFilter.length === 0) {
+      const roleObj = await prisma.roles.findFirst({ where: { tipo: role } });
+      if (!roleObj) {
         return successResponse(res, { usuarios: [], pagination: { page: parseInt(page), limit: parseInt(limit), total: 0, pages: 0 } });
       }
-      where.id = { in: usuarioIdsFilter };
+      where.role_id = roleObj.id;
     }
 
     const usuarios = await prisma.usuarios.findMany({
@@ -89,8 +87,8 @@ router.get('/view', async (req, res) => {
 
     // enriquecer
     const enriched = await Promise.all(usuarios.map(async (u) => {
-      const rolesRel = await prisma.usuario_roles.findMany({ where: { usuario_id: u.id }, include: { role: true } });
-      const roles = rolesRel.map(r => r.role.name);
+  const usuarioFull = await prisma.usuarios.findUnique({ where: { id: u.id }, include: { role: true } });
+  const roles = usuarioFull.role ? [usuarioFull.role.tipo] : [];
 
       const docsCount = await prisma.documentos.count({ where: { usuarios_id: u.id } });
 
@@ -100,7 +98,7 @@ router.get('/view', async (req, res) => {
         ...u,
         roles,
         documentCount: docsCount,
-        lastAction: lastAct ? { accion: lastAct.accion, fecha_inicio: lastAct.fecha_inicio, detalles: lastAct.detalles } : null
+        lastAction: lastAct ? { accion: lastAct.accion, fecha_inicio: lastAct.fecha_inicio, descripcion: lastAct.descripcion } : null
       };
     }));
 
@@ -124,8 +122,8 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
-    const usuario = await prisma.usuarios.findUnique({
+  const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
+  const usuario = await prisma.usuarios.findUnique({
       where: { id: parseInt(id) },
       select: {
         id: true,
@@ -134,7 +132,7 @@ router.get('/:id', async (req, res) => {
         email: true,
         activo: true,
         documentos: true,
-        ...(includeRoles && { roles: { include: { role: true } } })
+  ...(includeRoles && { role: true })
       }
     });
 
@@ -269,18 +267,15 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/roles', async (req, res) => {
   try {
     const { id } = req.params;
-    const { role_name } = req.body;
+    const { role_tipo } = req.body;
 
-    if (!role_name) return errorResponse(res, 'role_name es requerido', 400);
+    if (!role_tipo) return errorResponse(res, 'role_tipo es requerido', 400);
 
-    const role = await prisma.roles.findUnique({ where: { name: role_name } });
+    const role = await prisma.roles.findFirst({ where: { tipo: role_tipo } });
     if (!role) return errorResponse(res, 'Rol no encontrado', 404);
 
-    await prisma.usuario_roles.upsert({
-      where: { usuario_id_role_id: { usuario_id: parseInt(id), role_id: role.id } },
-      update: {},
-      create: { usuario_id: parseInt(id), role_id: role.id }
-    });
+  // Asignar role_id al usuario (un solo rol)
+  await prisma.usuarios.update({ where: { id: parseInt(id) }, data: { role_id: role.id } });
 
     return successResponse(res, null, 'Rol asignado al usuario');
   } catch (error) {
@@ -293,14 +288,18 @@ router.post('/:id/roles', async (req, res) => {
 router.delete('/:id/roles', async (req, res) => {
   try {
     const { id } = req.params;
-    const { role_name } = req.body;
+    const { role_tipo } = req.body;
 
-    if (!role_name) return errorResponse(res, 'role_name es requerido', 400);
+    if (!role_tipo) return errorResponse(res, 'role_tipo es requerido', 400);
 
-    const role = await prisma.roles.findUnique({ where: { name: role_name } });
+    const role = await prisma.roles.findFirst({ where: { tipo: role_tipo } });
     if (!role) return errorResponse(res, 'Rol no encontrado', 404);
 
-    await prisma.usuario_roles.delete({ where: { usuario_id_role_id: { usuario_id: parseInt(id), role_id: role.id } } });
+    // Quitar rol estableciendo role_id a null si coincide
+    const user = await prisma.usuarios.findUnique({ where: { id: parseInt(id) } });
+    if (user && user.role_id === role.id) {
+      await prisma.usuarios.update({ where: { id: parseInt(id) }, data: { role_id: null } });
+    }
 
     return successResponse(res, null, 'Rol eliminado del usuario');
   } catch (error) {

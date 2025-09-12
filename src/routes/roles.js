@@ -12,28 +12,16 @@ router.get('/', async (req, res) => {
     const skip = (page - 1) * limit;
     const wantUsers = includeUsers === '1' || includeUsers === 'true';
 
-    const roles = await prisma.roles.findMany({
+  const roles = await prisma.roles.findMany({
       skip: parseInt(skip),
       take: parseInt(limit),
       ...(wantUsers
         ? {
             include: {
-              usuarios: {
-                include: {
-                  usuario: {
-                    select: {
-                      id: true,
-                      nombre: true,
-                      apellidos: true,
-                      email: true,
-                      activo: true,
-                    }
-                  }
-                }
-              }
+        usuarios: true
             }
           }
-        : { select: { id: true, name: true, descripcion: true } }),
+        : { select: { id: true, tipo: true, descripcion: true } }),
     });
 
     const total = await prisma.roles.count();
@@ -41,18 +29,16 @@ router.get('/', async (req, res) => {
     // Si queremos usuarios, mapear de forma consistente el shape
     const payloadRoles = roles.map((r) => {
       if (!wantUsers) return r;
-      // Dependiendo del relation name, prisma puede devolver 'usuarios' o 'usuario_roles'
-      // Normalizar: extraer usuarios desde la relación intermedia
+      // Ahora `r.usuarios` es directamente la lista de usuarios
       if (r.usuarios) {
         return {
           id: r.id,
-          name: r.name || r.tipo || null,
+          name: r.tipo || null,
           descripcion: r.descripcion || null,
-          usuarios: r.usuarios.map((ur) => ur.usuario),
+          usuarios: r.usuarios.map((u) => ({ id: u.id, nombre: u.nombre, apellidos: u.apellidos, email: u.email, activo: u.activo })),
         };
       }
-      // fallback
-      return { id: r.id, name: r.name || r.tipo || null, descripcion: r.descripcion || null };
+      return { id: r.id, name: r.tipo || null, descripcion: r.descripcion || null };
     });
 
     return successResponse(res, {
@@ -79,9 +65,9 @@ router.get('/me', async (req, res) => {
     if (!req.user.roles) {
       const usuario = await prisma.usuarios.findUnique({
         where: { id: req.user.id },
-        include: { roles: { include: { role: true } } }
+        include: { role: true }
       });
-      req.user.roles = usuario?.roles?.map(r => r.role.name) || [];
+      req.user.roles = usuario?.role ? [usuario.role.tipo] : [];
     }
 
     return successResponse(res, { id: req.user.id, email: req.user.email, roles: req.user.roles });
@@ -98,15 +84,7 @@ router.get("/:id", async (req, res) => {
 
     const rol = await prisma.roles.findUnique({
       where: { id: parseInt(id) },
-      include: {
-        usuarios_has_roles: {
-          include: {
-            usuarios: {
-              select: { id: true, nombre: true, apellidos: true, email: true },
-            },
-          },
-        },
-      },
+      include: { usuarios: true }
     });
 
     if (!rol) {
@@ -212,9 +190,7 @@ router.delete("/:id", async (req, res) => {
     }
 
     // Verificar si hay usuarios asociados
-    const usuariosAsociados = await prisma.usuarios_has_roles.count({
-      where: { roles_id: parseInt(id) },
-    });
+  const usuariosAsociados = await prisma.usuarios.count({ where: { role_id: parseInt(id) } });
 
     if (usuariosAsociados > 0) {
       return errorResponse(
@@ -242,29 +218,8 @@ router.get("/:id/usuarios", async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
-    const usuariosConRol = await prisma.usuarios_has_roles.findMany({
-      where: { roles_id: parseInt(id) },
-      skip: parseInt(skip),
-      take: parseInt(limit),
-      include: {
-        usuarios: {
-          select: {
-            id: true,
-            nombre: true,
-            apellidos: true,
-            email: true,
-            activo: true,
-            departamentos_id: true,
-          },
-        },
-      },
-    });
-
-    const total = await prisma.usuarios_has_roles.count({
-      where: { roles_id: parseInt(id) },
-    });
-
-    const usuarios = usuariosConRol.map((item) => item.usuarios);
+  const usuarios = await prisma.usuarios.findMany({ where: { role_id: parseInt(id) }, skip: parseInt(skip), take: parseInt(limit), select: { id: true, nombre: true, apellidos: true, email: true, activo: true, departamentos_id: true } });
+  const total = await prisma.usuarios.count({ where: { role_id: parseInt(id) } });
 
     return successResponse(res, {
       usuarios,
