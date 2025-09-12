@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 4000;
 // Middlewares globales (deben ir antes de las rutas)
 app.use(cors());
 app.use(express.json());
+// Aceptar bodies enviados como application/x-www-form-urlencoded (formularios)
+app.use(express.urlencoded({ extended: true }));
 
 // Servir archivos subidos públicamente
 const path = require('path');

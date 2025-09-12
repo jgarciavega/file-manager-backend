@@ -118,10 +118,12 @@ model roles {
   usuarios           usuarios[]
 }
 
+<<<<<<< HEAD
 model tipos_documentos {
   id         Int          @id @default(autoincrement())
   tipo       String?
   documentos documentos[]
+}
 }
 
 // Nota: la tabla pivote `usuarios_has_roles` se eliminó porque ahora cada usuario tiene un solo rol (`usuarios.role_id`).
