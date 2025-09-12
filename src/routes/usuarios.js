@@ -121,23 +121,15 @@ router.get('/view', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-<<<<<<< HEAD
-
-    // Validar que el ID esté presente y sea un entero válido
-    const parsedId = id !== undefined ? parseInt(id, 10) : NaN;
-    if (id === undefined || Number.isNaN(parsedId)) {
+    // Validar y parsear ID
+    const idNum = id !== undefined ? parseInt(id, 10) : NaN;
+    if (id === undefined || Number.isNaN(idNum)) {
       return errorResponse(res, 'ID inválido o ausente', 400, "Argument 'id' is missing or invalid.");
     }
 
     const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
     const usuario = await prisma.usuarios.findUnique({
-      where: { id: parsedId },
-=======
-    
-  const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
-  const usuario = await prisma.usuarios.findUnique({
-      where: { id: parseInt(id) },
->>>>>>> 09ee652 (add: endpoints -> documentos, usuarios)
+      where: { id: idNum },
       select: {
         id: true,
         nombre: true,
