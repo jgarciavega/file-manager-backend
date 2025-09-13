@@ -121,11 +121,8 @@ router.get('/view', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-<<<<<<< HEAD
+
     // Validar y parsear ID
-=======
-<<<<<<< HEAD
->>>>>>> fceafc7 (fix)
     const idNum = id !== undefined ? parseInt(id, 10) : NaN;
     if (id === undefined || Number.isNaN(idNum)) {
       return errorResponse(res, 'ID inválido o ausente', 400, "Argument 'id' is missing or invalid.");
@@ -134,25 +131,6 @@ router.get('/:id', async (req, res) => {
     const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
     const usuario = await prisma.usuarios.findUnique({
       where: { id: idNum },
-=======
-<<<<<<< HEAD
-
-    // Validar que el ID esté presente y sea un entero válido
-    const parsedId = id !== undefined ? parseInt(id, 10) : NaN;
-    if (id === undefined || Number.isNaN(parsedId)) {
-      return errorResponse(res, 'ID inválido o ausente', 400, "Argument 'id' is missing or invalid.");
-    }
-
-    const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
-    const usuario = await prisma.usuarios.findUnique({
-      where: { id: parsedId },
-=======
-    
-  const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
-  const usuario = await prisma.usuarios.findUnique({
-      where: { id: parseInt(id) },
->>>>>>> 09ee652 (add: endpoints -> documentos, usuarios)
->>>>>>> 718e2a9 (fix)
       select: {
         id: true,
         nombre: true,
@@ -160,7 +138,7 @@ router.get('/:id', async (req, res) => {
         email: true,
         activo: true,
         documentos: true,
-  ...(includeRoles && { role: true })
+        ...(includeRoles && { role: true })
       }
     });
 
@@ -318,36 +296,22 @@ router.post('/:id/roles', async (req, res) => {
 });
 
 // DELETE /api/usuarios/:id/roles - Quitar rol a usuario
-router.get('/:id', async (req, res) => {
+router.delete('/:id/roles', async (req, res) => {
   try {
     const { id } = req.params;
-    // Validar y parsear ID de forma robusta
     const idNum = id !== undefined ? parseInt(id, 10) : NaN;
     if (id === undefined || Number.isNaN(idNum)) {
       return errorResponse(res, 'ID inválido o ausente', 400, "Argument 'id' is missing or invalid.");
     }
 
-    const includeRoles = req.query.includeRoles === '1' || req.query.includeRoles === 'true';
-    const usuario = await prisma.usuarios.findUnique({
-      where: { id: idNum },
-      select: {
-        id: true,
-        nombre: true,
-        apellidos: true,
-        email: true,
-        activo: true,
-        documentos: true,
-        ...(includeRoles && { role: true })
-      }
-    });
+    const usuarioExistente = await prisma.usuarios.findUnique({ where: { id: idNum } });
+    if (!usuarioExistente) return errorResponse(res, 'Usuario no encontrado', 404);
 
-    if (!usuario) {
-      return errorResponse(res, 'Usuario no encontrado', 404);
-    }
+    await prisma.usuarios.update({ where: { id: idNum }, data: { role_id: null } });
 
-    return successResponse(res, usuario, 'Usuario encontrado');
+    return successResponse(res, null, 'Rol removido del usuario');
   } catch (error) {
     console.error(error);
-    return errorResponse(res, 'Error al obtener usuario', 500, error.message);
+    return errorResponse(res, 'Error al remover rol', 500, error.message);
   }
 });
