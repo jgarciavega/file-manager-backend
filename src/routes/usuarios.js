@@ -161,14 +161,74 @@ router.post('/', async (req, res) => {
       return errorResponse(res, 'Body vacío o inválido. Asegúrate de enviar JSON y Content-Type: application/json', 400);
     }
 
-    const { nombre, apellidos, email, password, activo = 1 } = req.body;
+    // Sanitizar y extraer campos
+    let { nombre, apellidos, email, password, activo = 1, role_tipo, role_id } = req.body;
+    nombre = nombre !== undefined && nombre !== null ? String(nombre).trim() : undefined;
+    apellidos = apellidos !== undefined && apellidos !== null ? String(apellidos).trim() : undefined;
+    email = email !== undefined && email !== null ? String(email).trim() : undefined;
+    role_tipo = role_tipo !== undefined && role_tipo !== null ? String(role_tipo).trim() : undefined;
 
-    // Validaciones básicas
+    // Validaciones básicas y formales
     if (!email) {
-      return errorResponse(res, 'El email es requerido', 400);
+      return errorResponse(res, 'El campo "email" es requerido', 400);
+    }
+
+    // Validar formato de email simple
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(email)) {
+      return errorResponse(res, 'El email tiene un formato inválido', 400);
+    }
+
+    // Password opcional, pero si viene debe tener al menos 8 caracteres
+    if (password && String(password).length < 8) {
+      return errorResponse(res, 'La contraseña debe tener al menos 8 caracteres', 400);
+    }
+
+    // Validar activo: aceptar 0 o 1 (o valores booleanos coercibles)
+    const activoNum = Number.isNaN(Number(activo)) ? undefined : Number(activo);
+    if (activo !== undefined && activo !== null && activoNum !== undefined && ![0, 1].includes(activoNum)) {
+      return errorResponse(res, 'El campo "activo" debe ser 0 o 1', 400);
+    }
+
+    // role_id si viene debe ser entero positivo
+    if (role_id !== undefined && role_id !== null && role_id !== '') {
+      const parsedRoleId = parseInt(role_id, 10);
+      if (Number.isNaN(parsedRoleId) || parsedRoleId <= 0) {
+        return errorResponse(res, 'role_id inválido. Debe ser un entero positivo', 400);
+      }
+      role_id = parsedRoleId;
+    }
+
+    // role_tipo validaciones
+    if (role_tipo !== undefined && role_tipo !== null && role_tipo !== '') {
+      if (typeof role_tipo !== 'string' || role_tipo.length < 2 || role_tipo.length > 100) {
+        return errorResponse(res, 'role_tipo inválido. Debe ser texto entre 2 y 100 caracteres', 400);
+      }
     }
 
     const hashed = password ? await bcrypt.hash(password, 10) : undefined;
+
+    // Manejar rol: aceptar role_id (existente) o role_tipo (crear si no existe)
+    let assignedRoleId = null;
+    if (role_id !== undefined && role_id !== null) {
+      const parsedRoleId = parseInt(role_id, 10);
+      if (Number.isNaN(parsedRoleId)) return errorResponse(res, 'role_id inválido', 400);
+      const roleExist = await prisma.roles.findUnique({ where: { id: parsedRoleId } });
+      if (!roleExist) return errorResponse(res, 'Rol no encontrado por id', 404);
+      assignedRoleId = parsedRoleId;
+    } else if (role_tipo) {
+      // intentar encontrar por tipo, si no existe crear
+      let roleObj = await prisma.roles.findFirst({ where: { tipo: role_tipo } });
+      if (!roleObj) {
+        try {
+          roleObj = await prisma.roles.create({ data: { tipo: role_tipo, descripcion: null, activo: true, fecha_creacion: new Date() } });
+        } catch (err) {
+          console.error('Error creando rol:', err);
+          return errorResponse(res, 'role_tipo inválido o no se pudo crear el rol', 400, err.message);
+        }
+      }
+      assignedRoleId = roleObj.id;
+    }
 
     const nuevoUsuario = await prisma.usuarios.create({
       data: {
@@ -176,14 +236,16 @@ router.post('/', async (req, res) => {
         apellidos,
         email,
         password: hashed, // contraseña hasheada
-        activo: parseInt(activo)
+        activo: parseInt(activo),
+        ...(assignedRoleId !== null && { role_id: assignedRoleId })
       },
       select: {
         id: true,
         nombre: true,
         apellidos: true,
         email: true,
-        activo: true
+        activo: true,
+        role_id: true
       }
     });
 
