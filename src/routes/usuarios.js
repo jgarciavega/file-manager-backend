@@ -315,3 +315,6 @@ router.delete('/:id/roles', async (req, res) => {
     return errorResponse(res, 'Error al remover rol', 500, error.message);
   }
 });
+
+// Exportar el router (asegurar compatibilidad con app.js)
+module.exports = router;

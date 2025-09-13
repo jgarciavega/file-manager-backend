@@ -26,6 +26,7 @@ const { loadUserRoles } = require('./src/middleware/roles');
 // Usar rutas
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/documentos", documentosRoutes);
+// Usar bitacora router: si el módulo exporta { router } o bien exporta el router directamente
 app.use("/api/bitacora", bitacoraRoutes.router || bitacoraRoutes);
 // Cargar roles en req.user si existe (no interrumpe si no hay auth)
 app.use(loadUserRoles);
