@@ -24,40 +24,38 @@ model usuarios {
 }
 
 model documentos {
-  id                  Int               @id @default(autoincrement())
-  nombre              String?
-  descripcion         String?
-  mime                String?
-  ruta                String?
-  file_key            String?
-  size                Int?
-  checksum            String?
-  tipos_documentos_id Int?
-  usuarios_id         Int?
-  fecha_creacion      DateTime?
-  fecha_subida        DateTime?
-    // Jefatura responsable (relación a `departamentos` en lugar de texto libre)
-  departamentos_id    Int?
-  nivel_acceso        NivelAcceso?
+  id                   Int               @id @default(autoincrement())
+  nombre               String?
+  descripcion          String?
+  mime                 String?
+  ruta                 String?
+  file_key             String?
+  size                 Int?
+  checksum             String?
+  tipos_documentos_id  Int?
+  usuarios_id          Int?
+  fecha_creacion       DateTime?
+  fecha_subida         DateTime?
+  departamentos_id     Int?
+  nivel_acceso         NivelAcceso?
   codigo_clasificacion String?
-  numero_expediente   String?
-  serie               String?
-  subserie            String?
-  valor_documental    ValorDocumental?
-  plazo_conservacion  String?
-    // Referencia a `periodos` (si el formulario requiere seleccionar un periodo/plazo)
-  periodos_id         Int?
-  destino_final       String?
-  soporte             Soporte?
-  procedencia         String?
-  folio               String?
-  tipo_documento_text String?
-  estado_vigencia     String?
-  tipos_documentos    tipos_documentos? @relation(fields: [tipos_documentos_id], references: [id], onDelete: SetNull)
-  usuarios            usuarios?         @relation(fields: [usuarios_id], references: [id], onDelete: SetNull)
-  departamentos       departamentos?     @relation(fields: [departamentos_id], references: [id], onDelete: SetNull)
-  periodos            periodos?          @relation(fields: [periodos_id], references: [id], onDelete: SetNull)
-  favoritos           favoritos[]
+  numero_expediente    String?
+  serie                String?
+  subserie             String?
+  valor_documental     ValorDocumental?
+  plazo_conservacion   String?
+  periodos_id          Int?
+  destino_final        String?
+  soporte              Soporte?
+  procedencia          String?
+  folio                String?
+  tipo_documento_text  String?
+  estado_vigencia      String?
+  tipos_documentos     tipos_documentos? @relation(fields: [tipos_documentos_id], references: [id], onDelete: SetNull)
+  usuarios             usuarios?         @relation(fields: [usuarios_id], references: [id], onDelete: SetNull)
+  departamentos        departamentos?     @relation(fields: [departamentos_id], references: [id], onDelete: SetNull)
+  periodos             periodos?          @relation(fields: [periodos_id], references: [id], onDelete: SetNull)
+  favoritos            favoritos[]
 
   @@index([tipos_documentos_id], map: "tipos_documentos_id")
   @@index([usuarios_id], map: "usuarios_id")
@@ -171,3 +169,4 @@ enum Soporte {
   FISICO
   HIBRIDO
 }
+
