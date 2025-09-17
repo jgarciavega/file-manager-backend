@@ -21,6 +21,7 @@ const usuariosRoutes = require("./src/routes/usuarios");
 const documentosRoutes = require("./src/routes/documentos");
 const bitacoraRoutes = require("./src/routes/bitacora");
 const rolesRoutes = require("./src/routes/roles");
+const departamentosRoutes = require('./src/routes/departamentos');
 const { loadUserRoles } = require('./src/middleware/roles');
 
 // Usar rutas
@@ -31,6 +32,7 @@ app.use("/api/bitacora", bitacoraRoutes.router || bitacoraRoutes);
 // Cargar roles en req.user si existe (no interrumpe si no hay auth)
 app.use(loadUserRoles);
 app.use('/api/roles', rolesRoutes);
+app.use('/api/departamentos', departamentosRoutes);
 
 // Ruta de prueba
 app.get("/", (req, res) => {

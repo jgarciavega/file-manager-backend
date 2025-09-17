@@ -14,7 +14,7 @@ model usuarios {
   email              String?              @unique
   password           String?
   departamentos_id   Int?
-  departamentos      departamentos?       @relation(fields: [departamentos_id], references: [id], onDelete: SetNull)
+  departamentos      departamentos?       @relation(fields: [departamentos_id], references: [id], onDelete: Restrict)
   role_id            Int?
   role               roles?               @relation(fields: [role_id], references: [id], onDelete: SetNull)
   activo             Int?

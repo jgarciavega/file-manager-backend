@@ -175,9 +175,14 @@ async function main() {
     ];
 
     const departamentos = [
-      { nombre: 'Finanzas', descripcion: 'Depto Finanzas', activo: true },
-      { nombre: 'Jurídico', descripcion: 'Depto Jurídico', activo: true },
-      { nombre: 'Recursos Humanos', descripcion: 'Depto RRHH', activo: true }
+      { nombre: 'Administración y Finanzas', descripcion: 'Jefatura Administración y Finanzas', activo: true },
+      { nombre: 'Contraloría e Investigación', descripcion: 'Jefatura Contraloría e Investigación', activo: true },
+      { nombre: 'Coordinación General', descripcion: 'Jefatura Coordinación General', activo: true },
+      { nombre: 'Informática', descripcion: 'Jefatura Informática', activo: true },
+      { nombre: 'Jurídico', descripcion: 'Jefatura Jurídico', activo: true },
+      { nombre: 'Operaciones Portuarias', descripcion: 'Jefatura Operaciones Portuarias', activo: true },
+      { nombre: 'Planeación', descripcion: 'Jefatura Planeación', activo: true },
+      { nombre: 'Recursos Humanos', descripcion: 'Jefatura Recursos Humanos', activo: true }
     ];
 
     const periodos = [
