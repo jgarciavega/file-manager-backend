@@ -9,6 +9,7 @@ if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // Usuarios prioritarios (incrustados aquí; antes estaban en seed_users_data.js)
 const seedUsers = [
+
   { nombre: 'Jorge', apellidos: 'Garcia Vega', email: 'jorge.garcia@apibcs.com.mx', password: '123456' },
   { nombre: 'Ana', apellidos: 'García', email: 'ana.garcia@example.com', password: 'secret' },
   { nombre: 'Luis', apellidos: 'Martínez', email: 'luis.martinez@example.com', password: 'secret' },
