@@ -87,8 +87,10 @@ router.get('/view', async (req, res) => {
 
     // enriquecer
     const enriched = await Promise.all(usuarios.map(async (u) => {
-  const usuarioFull = await prisma.usuarios.findUnique({ where: { id: u.id }, include: { role: true } });
-  const roles = usuarioFull.role ? [usuarioFull.role.tipo] : [];
+  // Obtener usuario completo con role y departamentos
+  const usuarioFull = await prisma.usuarios.findUnique({ where: { id: u.id }, include: { role: true, departamentos: true } });
+  const rol = usuarioFull && usuarioFull.role ? usuarioFull.role.tipo : null;
+  const departamento = usuarioFull && usuarioFull.departamentos ? { id: usuarioFull.departamentos.id, nombre: usuarioFull.departamentos.nombre } : null;
 
       const docsCount = await prisma.documentos.count({ where: { usuarios_id: u.id } });
 
@@ -96,7 +98,8 @@ router.get('/view', async (req, res) => {
 
       return {
         ...u,
-        roles,
+        rol,
+        departamento,
         documentCount: docsCount,
         lastAction: lastAct ? { accion: lastAct.accion, fecha_inicio: lastAct.fecha_inicio, descripcion: lastAct.descripcion } : null
       };
@@ -156,68 +159,48 @@ router.get('/:id', async (req, res) => {
 // POST /api/usuarios - Crear nuevo usuario
 router.post('/', async (req, res) => {
   try {
-    // Validar que el body exista (evita crash cuando req.body es undefined)
     if (!req.body || Object.keys(req.body).length === 0) {
       return errorResponse(res, 'Body vacío o inválido. Asegúrate de enviar JSON y Content-Type: application/json', 400);
     }
 
-    // Sanitizar y extraer campos
-    let { nombre, apellidos, email, password, activo = 1, role_tipo, role_id } = req.body;
+    let { nombre, apellidos, email, password, activo = undefined, role_tipo, role_id, departamentos_id } = req.body;
     nombre = nombre !== undefined && nombre !== null ? String(nombre).trim() : undefined;
     apellidos = apellidos !== undefined && apellidos !== null ? String(apellidos).trim() : undefined;
     email = email !== undefined && email !== null ? String(email).trim() : undefined;
     role_tipo = role_tipo !== undefined && role_tipo !== null ? String(role_tipo).trim() : undefined;
 
-    // Validaciones básicas y formales
-    if (!email) {
-      return errorResponse(res, 'El campo "email" es requerido', 400);
+    // Normalizar email a minúsculas para evitar duplicados por mayúsculas/minúsculas
+    const normalizedEmail = email ? String(email).toLowerCase() : undefined;
+    if (normalizedEmail) {
+      // Comprobar si ya existe un usuario con ese email
+      const existingEmail = await prisma.usuarios.findFirst({ where: { email: normalizedEmail } });
+      if (existingEmail) return errorResponse(res, 'El email ya está en uso', 409);
     }
 
-    // Validar formato de email simple
+    // Reemplazar email por la versión normalizada antes de validar formato
+    if (normalizedEmail) email = normalizedEmail;
+
+    // Validaciones únicamente si se envía el campo
     const emailRegex = /^\S+@\S+\.\S+$/;
-    if (!emailRegex.test(email)) {
+    if (email && !emailRegex.test(email)) {
       return errorResponse(res, 'El email tiene un formato inválido', 400);
     }
 
-    // Password opcional, pero si viene debe tener al menos 8 caracteres
     if (password && String(password).length < 8) {
       return errorResponse(res, 'La contraseña debe tener al menos 8 caracteres', 400);
     }
 
-    // Validar activo: aceptar 0 o 1 (o valores booleanos coercibles)
-    const activoNum = Number.isNaN(Number(activo)) ? undefined : Number(activo);
-    if (activo !== undefined && activo !== null && activoNum !== undefined && ![0, 1].includes(activoNum)) {
-      return errorResponse(res, 'El campo "activo" debe ser 0 o 1', 400);
-    }
-
-    // role_id si viene debe ser entero positivo
-    if (role_id !== undefined && role_id !== null && role_id !== '') {
-      const parsedRoleId = parseInt(role_id, 10);
-      if (Number.isNaN(parsedRoleId) || parsedRoleId <= 0) {
-        return errorResponse(res, 'role_id inválido. Debe ser un entero positivo', 400);
-      }
-      role_id = parsedRoleId;
-    }
-
-    // role_tipo validaciones
-    if (role_tipo !== undefined && role_tipo !== null && role_tipo !== '') {
-      if (typeof role_tipo !== 'string' || role_tipo.length < 2 || role_tipo.length > 100) {
-        return errorResponse(res, 'role_tipo inválido. Debe ser texto entre 2 y 100 caracteres', 400);
-      }
-    }
-
     const hashed = password ? await bcrypt.hash(password, 10) : undefined;
 
-    // Manejar rol: aceptar role_id (existente) o role_tipo (crear si no existe)
+    // Manejar rol (igual que antes)
     let assignedRoleId = null;
-    if (role_id !== undefined && role_id !== null) {
+    if (role_id !== undefined && role_id !== null && role_id !== '') {
       const parsedRoleId = parseInt(role_id, 10);
       if (Number.isNaN(parsedRoleId)) return errorResponse(res, 'role_id inválido', 400);
       const roleExist = await prisma.roles.findUnique({ where: { id: parsedRoleId } });
       if (!roleExist) return errorResponse(res, 'Rol no encontrado por id', 404);
       assignedRoleId = parsedRoleId;
     } else if (role_tipo) {
-      // intentar encontrar por tipo, si no existe crear
       let roleObj = await prisma.roles.findFirst({ where: { tipo: role_tipo } });
       if (!roleObj) {
         try {
@@ -230,22 +213,46 @@ router.post('/', async (req, res) => {
       assignedRoleId = roleObj.id;
     }
 
+    // Manejar departamento: buscar por nombre o validar id
+    let assignedDeptId = null;
+    if (departamentos_id !== undefined && departamentos_id !== null && departamentos_id !== '') {
+      if (typeof departamentos_id === 'string' && isNaN(Number(departamentos_id))) {
+        // Normalizar nombre (trim) y buscar de forma case-insensitive
+        const deptName = String(departamentos_id).trim();
+        // Usar equals simple (la sensibilidad a mayúsculas depende de la collation de la BD)
+        const dept = await prisma.departamentos.findFirst({ where: { nombre: { equals: deptName } } });
+        if (!dept) return errorResponse(res, 'Departamento no encontrado', 404);
+        assignedDeptId = dept.id;
+      } else {
+        const parsedDeptId = parseInt(departamentos_id, 10);
+        if (Number.isNaN(parsedDeptId)) return errorResponse(res, 'departamentos_id inválido', 400);
+        const deptExist = await prisma.departamentos.findUnique({ where: { id: parsedDeptId } });
+        if (!deptExist) return errorResponse(res, 'Departamento no encontrado por id', 404);
+        assignedDeptId = parsedDeptId;
+      }
+    }
+
+    // Construir data sólo con campos definidos
+    const dataToCreate = {
+      ...(nombre !== undefined && { nombre }),
+      ...(apellidos !== undefined && { apellidos }),
+      ...(email !== undefined && { email }),
+      ...(hashed !== undefined && { password: hashed }),
+      ...(activo !== undefined && { activo: parseInt(activo) }),
+      ...(assignedRoleId !== null && { role_id: assignedRoleId }),
+      ...(assignedDeptId !== null && { departamentos_id: assignedDeptId })
+    };
+
     const nuevoUsuario = await prisma.usuarios.create({
-      data: {
-        nombre,
-        apellidos,
-        email,
-        password: hashed, // contraseña hasheada
-        activo: parseInt(activo),
-        ...(assignedRoleId !== null && { role_id: assignedRoleId })
-      },
+      data: dataToCreate,
       select: {
         id: true,
         nombre: true,
         apellidos: true,
         email: true,
         activo: true,
-        role_id: true
+        role_id: true,
+        departamentos_id: true
       }
     });
 
