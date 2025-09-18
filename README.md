@@ -59,6 +59,32 @@ Backend API para un sistema de gestión documental empresarial construido con No
 
 ## 📚 API Endpoints
 
+## 🔐 Autenticación y protección de rutas
+
+IMPORTANTE: a partir de la configuración actual, todas las rutas bajo el prefijo `/api` requieren autenticación mediante JWT, excepto las rutas de autenticación `/api/auth/*` (por ejemplo `/api/auth/login`).
+
+Cómo funciona:
+- Para obtener un token usa `POST /api/auth/login` con `email` y `password`.
+- Incluye el token en todas las llamadas protegidas usando el header `Authorization: Bearer <TOKEN>`.
+- En Postman: después del login guarda el token en una variable de entorno `jwt_token` y usa Authorization -> Bearer Token -> `{{jwt_token}}`.
+
+Ejemplo rápido (curl / PowerShell):
+
+1) Login (obtiene token):
+
+```powershell
+curl -X POST "http://localhost:4000/api/auth/login" -H "Content-Type: application/json" -d '{"email":"test+login@example.com","password":"password123"}'
+```
+
+2) Llamada protegida (usar el token retornado):
+
+```powershell
+curl "http://localhost:4000/api/documentos" -H "Authorization: Bearer <TOKEN_AQUI>"
+```
+
+Si recibes `401 Unauthorized` verifica que el token está correctamente copiado (sin comillas extras) y que no ha expirado.
+
+
 ### Usuarios
 - `GET /api/usuarios` - Obtener todos los usuarios
 - `GET /api/usuarios/:id` - Obtener usuario por ID

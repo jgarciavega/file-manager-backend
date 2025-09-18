@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { successResponse, errorResponse } = require('../utils/responses');
+const { verifyToken } = require('../middleware/auth');
+const { loadUserRoles, requireAnyRole, requireRole } = require('../middleware/roles');
 
 const prisma = new PrismaClient();
 const path = require('path');
@@ -107,8 +109,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/documentos - Crear nuevo documento
-router.post('/', async (req, res) => {
+// POST /api/documentos - Crear nuevo documento (autenticado)
+router.post('/', verifyToken, async (req, res) => {
   try {
     const { 
       nombre, 
@@ -185,8 +187,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/documentos/:id - Actualizar documento
-router.put('/:id', async (req, res) => {
+// PUT /api/documentos/:id - Actualizar documento (autenticado)
+router.put('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, descripcion, mime, ruta } = req.body;
@@ -250,8 +252,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/documentos/:id - Eliminar documento
-router.delete('/:id', async (req, res) => {
+// DELETE /api/documentos/:id - Eliminar documento (autenticado)
+router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -291,8 +293,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// POST /api/documentos/upload - Subir archivo y registrar en bitacora
-router.post('/upload', upload.single('file'), async (req, res) => {
+// POST /api/documentos/upload - Subir archivo y registrar en bitacora (autenticado)
+router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return errorResponse(res, 'Archivo no proporcionado', 400);
 

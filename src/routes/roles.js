@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { PrismaClient } = require("@prisma/client");
 const { successResponse, errorResponse } = require("../utils/responses");
+const { verifyToken } = require('../middleware/auth');
+const { loadUserRoles, requireRole } = require('../middleware/roles');
 
 const prisma = new PrismaClient();
 
@@ -57,7 +59,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/roles/me - roles del usuario autenticado
-router.get('/me', async (req, res) => {
+router.get('/me', verifyToken, loadUserRoles, async (req, res) => {
   try {
     // loadUserRoles middleware puede poblar req.user.roles, pero aceptamos también que req.user ya tenga roles
     if (!req.user || !req.user.id) return errorResponse(res, 'No autenticado', 401);
@@ -98,8 +100,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/roles - Crear nuevo rol
-router.post("/", async (req, res) => {
+// POST /api/roles - Crear nuevo rol (ADMIN)
+router.post("/", verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { tipo, descripcion, activo = true } = req.body;
 
@@ -134,8 +136,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/roles/:id - Actualizar rol
-router.put("/:id", async (req, res) => {
+// PUT /api/roles/:id - Actualizar rol (ADMIN)
+router.put("/:id", verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const { tipo, descripcion, activo } = req.body;
@@ -176,8 +178,8 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/roles/:id - Eliminar rol
-router.delete("/:id", async (req, res) => {
+// DELETE /api/roles/:id - Eliminar rol (ADMIN)
+router.delete("/:id", verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
 

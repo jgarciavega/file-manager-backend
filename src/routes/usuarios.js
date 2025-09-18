@@ -3,6 +3,8 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { successResponse, errorResponse } = require('../utils/responses');
 const bcrypt = require('bcryptjs');
+const { verifyToken } = require('../middleware/auth');
+const { loadUserRoles, requireRole } = require('../middleware/roles');
 
 const prisma = new PrismaClient();
 
@@ -267,8 +269,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/usuarios/:id - Actualizar usuario
-router.put('/:id', async (req, res) => {
+// PUT /api/usuarios/:id - Actualizar usuario (ADMIN)
+router.put('/:id', verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, apellidos, email, password, activo } = req.body;
@@ -318,8 +320,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/usuarios/:id - Eliminar usuario
-router.delete('/:id', async (req, res) => {
+// DELETE /api/usuarios/:id - Eliminar usuario (ADMIN)
+router.delete('/:id', verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -344,8 +346,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// POST /api/usuarios/:id/roles - Asignar rol a usuario
-router.post('/:id/roles', async (req, res) => {
+// POST /api/usuarios/:id/roles - Asignar rol a usuario (ADMIN)
+router.post('/:id/roles', verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const { role_tipo } = req.body;
@@ -365,8 +367,8 @@ router.post('/:id/roles', async (req, res) => {
   }
 });
 
-// DELETE /api/usuarios/:id/roles - Quitar rol a usuario
-router.delete('/:id/roles', async (req, res) => {
+// DELETE /api/usuarios/:id/roles - Quitar rol a usuario (ADMIN)
+router.delete('/:id/roles', verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const idNum = id !== undefined ? parseInt(id, 10) : NaN;

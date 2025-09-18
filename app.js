@@ -23,14 +23,22 @@ const bitacoraRoutes = require("./src/routes/bitacora");
 const rolesRoutes = require("./src/routes/roles");
 const departamentosRoutes = require('./src/routes/departamentos');
 const { loadUserRoles } = require('./src/middleware/roles');
+const authRoutes = require('./src/routes/auth');
+const { verifyToken } = require('./src/middleware/auth');
 
-// Usar rutas
+// Montar /api/auth primero (debe permanecer público para login/register)
+app.use('/api/auth', authRoutes);
+
+// Proteger por defecto todas las rutas bajo /api (excepto las montadas antes)
+app.use('/api', verifyToken);
+// Cargar roles en req.user para las rutas protegidas
+app.use(loadUserRoles);
+
+// Usar rutas (ya protegidas por el middleware global anterior)
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/documentos", documentosRoutes);
 // Usar bitacora router: si el módulo exporta { router } o bien exporta el router directamente
 app.use("/api/bitacora", bitacoraRoutes.router || bitacoraRoutes);
-// Cargar roles en req.user si existe (no interrumpe si no hay auth)
-app.use(loadUserRoles);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/departamentos', departamentosRoutes);
 

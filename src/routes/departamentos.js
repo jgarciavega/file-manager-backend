@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { PrismaClient } = require("@prisma/client");
 const { successResponse, errorResponse } = require("../utils/responses");
+const { verifyToken } = require('../middleware/auth');
+const { loadUserRoles, requireRole } = require('../middleware/roles');
 
 const prisma = new PrismaClient();
 
@@ -68,8 +70,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/departamentos - Crear nuevo departamento
-router.post("/", async (req, res) => {
+// POST /api/departamentos - Crear nuevo departamento (ADMIN)
+router.post("/", verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { nombre, descripcion, activo = true } = req.body;
 
@@ -103,8 +105,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/departamentos/:id - Actualizar departamento
-router.put("/:id", async (req, res) => {
+// PUT /api/departamentos/:id - Actualizar departamento (ADMIN)
+router.put("/:id", verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, descripcion, activo } = req.body;
@@ -142,8 +144,8 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/departamentos/:id - Eliminar departamento
-router.delete("/:id", async (req, res) => {
+// DELETE /api/departamentos/:id - Eliminar departamento (ADMIN)
+router.delete("/:id", verifyToken, loadUserRoles, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
 
