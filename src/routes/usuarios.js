@@ -90,7 +90,8 @@ router.get('/view', async (req, res) => {
   // Obtener usuario completo con role y departamentos
   const usuarioFull = await prisma.usuarios.findUnique({ where: { id: u.id }, include: { role: true, departamentos: true } });
   const rol = usuarioFull && usuarioFull.role ? usuarioFull.role.tipo : null;
-  const departamento = usuarioFull && usuarioFull.departamentos ? { id: usuarioFull.departamentos.id, nombre: usuarioFull.departamentos.nombre } : null;
+  // Mostrar solo el nombre del departamento (string) o null
+  const departamento = usuarioFull && usuarioFull.departamentos ? usuarioFull.departamentos.nombre : null;
 
       const docsCount = await prisma.documentos.count({ where: { usuarios_id: u.id } });
 

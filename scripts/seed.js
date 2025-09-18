@@ -199,6 +199,8 @@ async function main() {
 
     await ensureRoles(roles);
     await ensureDepartamentos(departamentos);
+    // Obtener lista de departamentos ya creados para asignar a usuarios
+    const allDepts = await prisma.departamentos.findMany({ select: { id: true, nombre: true } });
     await ensurePeriodos(periodos);
     await ensureTipos(tipos);
 
@@ -214,16 +216,54 @@ async function main() {
       { nombre: 'Luis', apellidos: 'Martínez', email: 'luis.martinez@example.com', password: 'secret' }
     ];
 
-    const created = await createUsers(defaultUsers);
+    // Crear/actualizar usuarios y asignar departamentos_id
+    for (let i = 0; i < defaultUsers.length; i++) {
+      const u = defaultUsers[i];
+      const hashed = await bcrypt.hash(u.password, 10);
+
+      // Determinar departamento: si viene nombre en u.departamento, buscar; si no, usar round-robin
+      let deptId = null;
+      if (u.departamento) {
+        const deptFound = await prisma.departamentos.findFirst({ where: { nombre: u.departamento } });
+        if (deptFound) deptId = deptFound.id;
+      }
+      if (!deptId && allDepts.length > 0) {
+        deptId = allDepts[i % allDepts.length].id;
+      }
+
+      const roleObj = u.role ? await prisma.roles.findFirst({ where: { tipo: u.role } }) : null;
+
+      await prisma.usuarios.upsert({
+        where: { email: u.email },
+        update: {
+          nombre: u.nombre,
+          apellidos: u.apellidos,
+          password: hashed,
+          role_id: roleObj ? roleObj.id : null,
+          departamentos_id: deptId,
+          activo: 1
+        },
+        create: {
+          nombre: u.nombre,
+          apellidos: u.apellidos,
+          email: u.email,
+          password: hashed,
+          role_id: roleObj ? roleObj.id : null,
+          departamentos_id: deptId,
+          activo: 1
+        }
+      });
+      console.log('Seed usuario:', u.email, 'deptId:', deptId);
+    }
 
     // asignar roles por defecto (mapear por email)
-    const roleMap = [
-      { userEmail: 'jorge.garcia@apibcs.com.mx', roleTipo: 'admin' },
-      { userEmail: 'ana.garcia@example.com', roleTipo: 'capturista' },
-      { userEmail: 'luis.martinez@example.com', roleTipo: 'revisor' }
-    ];
+     const roleMap = [
+       { userEmail: 'jorge.garcia@apibcs.com.mx', roleTipo: 'admin' },
+       { userEmail: 'ana.garcia@example.com', roleTipo: 'capturista' },
+       { userEmail: 'luis.martinez@example.com', roleTipo: 'revisor' }
+     ];
 
-    await assignRoles(roleMap);
+     await assignRoles(roleMap);
 
     // Asignar roles por defecto a usuarios restantes: solo 'capturista' o 'revisor'
     const defaultRoleOptions = ['capturista', 'revisor'];
