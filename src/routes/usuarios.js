@@ -57,7 +57,7 @@ router.get('/', async (req, res) => {
 // GET /api/usuarios/view - Vista enriquecida: usuarios con roles, conteo de documentos y última acción
 router.get('/view', async (req, res) => {
   try {
-    const { page = 1, limit = 20, role, activo } = req.query;
+    const { page = 1, limit = 10, role, activo } = req.query;
     const skip = (page - 1) * limit;
 
     const where = {};
