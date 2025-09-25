@@ -7,6 +7,7 @@ const multer = require('multer');
 const multipart = multer();
 const { successResponse, errorResponse } = require('../utils/responses');
 const { verifyToken } = require('../middleware/auth');
+require('dotenv').config();
 
 const prisma = new PrismaClient();
 

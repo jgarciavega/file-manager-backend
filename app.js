@@ -3,6 +3,9 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
+console.log("🧪 JWT_SECRET:", process.env.JWT_SECRET);
+
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 
@@ -25,6 +28,7 @@ const departamentosRoutes = require('./src/routes/departamentos');
 const { loadUserRoles } = require('./src/middleware/roles');
 const authRoutes = require('./src/routes/auth');
 const { verifyToken } = require('./src/middleware/auth');
+const tiposDocumentosRoutes = require("./src/routes/tiposDocumentos");
 
 // Montar /api/auth primero (debe permanecer público para login/register)
 app.use('/api/auth', authRoutes);
@@ -37,6 +41,7 @@ app.use(loadUserRoles);
 // Usar rutas (ya protegidas por el middleware global anterior)
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/documentos", documentosRoutes);
+app.use("/api/tipos-documentos", tiposDocumentosRoutes);
 // Usar bitacora router: si el módulo exporta { router } o bien exporta el router directamente
 app.use("/api/bitacora", bitacoraRoutes.router || bitacoraRoutes);
 app.use('/api/roles', rolesRoutes);
