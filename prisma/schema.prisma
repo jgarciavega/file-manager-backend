@@ -42,11 +42,28 @@ model documentos {
   numero_expediente    String?
   serie                String?
   subserie             String?
+  // campos legacy (compatibilidad)
   valor_documental     ValorDocumental?
   plazo_conservacion   String?
   periodos_id          Int?
   destino_final        String?
   soporte              Soporte?
+
+  // Nuevas referencias normalizadas (tablas relacionadas)
+  codigo_clasificacion_id Int?
+  codigo_clasificacion_ref cuadro_clasificacion? @relation(fields: [codigo_clasificacion_id], references: [id], onDelete: SetNull)
+
+  valor_documental_id   Int?
+  valor_documental_ref  valores_documentales? @relation(fields: [valor_documental_id], references: [id], onDelete: SetNull)
+
+  plazo_conservacion_id Int?
+  plazo_conservacion_ref plazos_conservacion? @relation(fields: [plazo_conservacion_id], references: [id], onDelete: SetNull)
+
+  destino_final_id      Int?
+  destino_final_ref     destinos_finales? @relation(fields: [destino_final_id], references: [id], onDelete: SetNull)
+
+  soporte_id            Int?
+  soporte_ref           soportes_documentales? @relation(fields: [soporte_id], references: [id], onDelete: SetNull)
   procedencia          String?
   folio                String?
   tipo_documento_text  String?
@@ -56,6 +73,12 @@ model documentos {
   departamentos        departamentos?     @relation(fields: [departamentos_id], references: [id], onDelete: SetNull)
   periodos             periodos?          @relation(fields: [periodos_id], references: [id], onDelete: SetNull)
   favoritos            favoritos[]
+
+  @@index([codigo_clasificacion_id], map: "documentos_codigo_clasificacion_id_idx")
+  @@index([valor_documental_id], map: "documentos_valor_documental_id_idx")
+  @@index([plazo_conservacion_id], map: "documentos_plazo_conservacion_id_idx")
+  @@index([destino_final_id], map: "documentos_destino_final_id_idx")
+  @@index([soporte_id], map: "documentos_soporte_id_idx")
 
   @@index([tipos_documentos_id], map: "tipos_documentos_id")
   @@index([usuarios_id], map: "usuarios_id")
@@ -168,5 +191,45 @@ enum Soporte {
   DIGITAL
   FISICO
   HIBRIDO
+}
+
+// Nuevos modelos normalizados para metadatos documentales
+model cuadro_clasificacion {
+  id      Int      @id @default(autoincrement())
+  codigo  String   @unique
+  titulo  String?
+  descripcion String?
+  documentos documentos[]
+}
+
+model valores_documentales {
+  id    Int    @id @default(autoincrement())
+  clave String @unique
+  nombre String?
+  descripcion String?
+  documentos documentos[]
+}
+
+model plazos_conservacion {
+  id    Int    @id @default(autoincrement())
+  clave String @unique
+  descripcion String?
+  documentos documentos[]
+}
+
+model destinos_finales {
+  id    Int    @id @default(autoincrement())
+  clave String @unique
+  nombre String?
+  descripcion String?
+  documentos documentos[]
+}
+
+model soportes_documentales {
+  id    Int    @id @default(autoincrement())
+  clave String @unique
+  nombre String?
+  descripcion String?
+  documentos documentos[]
 }
 

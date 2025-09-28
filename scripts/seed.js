@@ -48,6 +48,41 @@ async function ensureTipos(list) {
   }
 }
 
+async function ensureCuadroClasificacion(list) {
+  for (const c of list) {
+    const exists = await prisma.cuadro_clasificacion.findFirst({ where: { codigo: c.codigo } });
+    if (!exists) await prisma.cuadro_clasificacion.create({ data: c });
+  }
+}
+
+async function ensureValoresDocumentales(list) {
+  for (const v of list) {
+    const exists = await prisma.valores_documentales.findFirst({ where: { clave: v.clave } });
+    if (!exists) await prisma.valores_documentales.create({ data: v });
+  }
+}
+
+async function ensurePlazosConservacion(list) {
+  for (const p of list) {
+    const exists = await prisma.plazos_conservacion.findFirst({ where: { clave: p.clave } });
+    if (!exists) await prisma.plazos_conservacion.create({ data: p });
+  }
+}
+
+async function ensureDestinosFinales(list) {
+  for (const d of list) {
+    const exists = await prisma.destinos_finales.findFirst({ where: { clave: d.clave } });
+    if (!exists) await prisma.destinos_finales.create({ data: d });
+  }
+}
+
+async function ensureSoportesDocumentales(list) {
+  for (const s of list) {
+    const exists = await prisma.soportes_documentales.findFirst({ where: { clave: s.clave } });
+    if (!exists) await prisma.soportes_documentales.create({ data: s });
+  }
+}
+
 async function createUsers(users) {
   const created = [];
   for (const u of users) {
@@ -80,6 +115,11 @@ async function createDocuments({ count = 20 } = {}) {
   const tipos = await prisma.tipos_documentos.findMany({ select: { id: true } });
   const departamentos = await prisma.departamentos.findMany({ select: { id: true } });
   const periodos = await prisma.periodos.findMany({ select: { id: true } });
+  const cuadros = await prisma.cuadro_clasificacion.findMany({ select: { id: true, codigo: true, titulo: true } });
+  const valores = await prisma.valores_documentales.findMany({ select: { id: true, clave: true, nombre: true } });
+  const plazos = await prisma.plazos_conservacion.findMany({ select: { id: true, clave: true, descripcion: true } });
+  const destinos = await prisma.destinos_finales.findMany({ select: { id: true, clave: true, nombre: true } });
+  const soportes = await prisma.soportes_documentales.findMany({ select: { id: true, clave: true, nombre: true } });
 
   if (users.length === 0) throw new Error('No users for documents');
   if (tipos.length === 0) throw new Error('No tipos_documentos');
@@ -105,6 +145,12 @@ async function createDocuments({ count = 20 } = {}) {
     fs.writeFileSync(filepath, content);
     const stats = fs.statSync(filepath);
 
+    const cuadro = cuadros.length ? cuadros[i % cuadros.length] : null;
+    const valor = valores.length ? valores[i % valores.length] : null;
+    const plazo = plazos.length ? plazos[i % plazos.length] : null;
+    const destino = destinos.length ? destinos[i % destinos.length] : null;
+    const soporte = soportes.length ? soportes[i % soportes.length] : null;
+
     const createData = {
       nombre: baseName,
       descripcion: `${baseName} generado por seed (#${i})`,
@@ -119,6 +165,20 @@ async function createDocuments({ count = 20 } = {}) {
       fecha_subida: new Date(Date.now() - (i * 86400000)),
       departamentos_id: departamentos.length ? departamentos[i % departamentos.length].id : null,
       periodos_id: periodos.length ? periodos[i % periodos.length].id : null,
+  // legacy strings (llenar desde los catálogos cuando exista)
+  // nota: `valor_documental` y `soporte` en el schema son enums; no escribimos strings inválidos
+  codigo_clasificacion: cuadro ? cuadro.codigo : null,
+  valor_documental: null,
+  plazo_conservacion: plazo ? plazo.descripcion : null,
+  destino_final: destino ? destino.nombre : null,
+  soporte: null,
+
+      // referencias a catálogos (FK)
+      codigo_clasificacion_id: cuadro ? cuadro.id : null,
+      valor_documental_id: valor ? valor.id : null,
+      plazo_conservacion_id: plazo ? plazo.id : null,
+      destino_final_id: destino ? destino.id : null,
+      soporte_id: soporte ? soporte.id : null,
       procedencia: 'seed',
       estado_vigencia: i % 5 === 0 ? 'VENCIDO' : 'VIGENTE'
     };
@@ -197,12 +257,71 @@ async function main() {
       { tipo: 'Contrato' }
     ];
 
+    const cuadroClasificacion = [
+      { codigo: '001', titulo: 'Normatividad y Legislación' },
+      { codigo: '002', titulo: 'Planeación y Programación' },
+      { codigo: '003', titulo: 'Organización y Funcionamiento' },
+      { codigo: '004', titulo: 'Recursos Humanos' },
+      { codigo: '005', titulo: 'Recursos Financieros' },
+      { codigo: '006', titulo: 'Recursos Materiales y Servicios' },
+      { codigo: '007', titulo: 'Servicios Portuarios' },
+      { codigo: '008', titulo: 'Operaciones Marítimas' },
+      { codigo: '009', titulo: 'Seguridad Portuaria' },
+      { codigo: '010', titulo: 'Medio Ambiente' },
+      { codigo: '011', titulo: 'Tecnologías de la Información' },
+      { codigo: '012', titulo: 'Comunicación Social' },
+      { codigo: '013', titulo: 'Transparencia y Acceso a la Información' },
+      { codigo: '014', titulo: 'Contraloría Interna' },
+      { codigo: '015', titulo: 'Asuntos Jurídicos' }
+    ];
+
+    const valoresDocumentales = [
+      { clave: 'administrativo', nombre: 'Administrativo' },
+      { clave: 'legal', nombre: 'Legal' },
+      { clave: 'fiscal', nombre: 'Fiscal' },
+      { clave: 'historico', nombre: 'Histórico' },
+      { clave: 'mixto', nombre: 'Mixto (Varios valores)' }
+    ];
+
+    const plazosConservacion = [
+      { clave: '1', descripcion: '1 año' },
+      { clave: '2', descripcion: '2 años' },
+      { clave: '3', descripcion: '3 años' },
+      { clave: '5', descripcion: '5 años' },
+      { clave: '10', descripcion: '10 años' },
+      { clave: '15', descripcion: '15 años' },
+      { clave: '20', descripcion: '20 años' },
+      { clave: '30', descripcion: '30 años' },
+      { clave: 'permanente', descripcion: 'Conservación Permanente' }
+    ];
+
+    const destinosFinales = [
+      { clave: 'conservacion_permanente', nombre: 'Conservación Permanente' },
+      { clave: 'baja_documental', nombre: 'Baja Documental' },
+      { clave: 'transferencia_historico', nombre: 'Transferencia a Archivo Histórico' }
+    ];
+
+    const soportesDocumentales = [
+      { clave: 'original_fisico', nombre: 'Original Físico' },
+      { clave: 'original_digital', nombre: 'Original Digital' },
+      { clave: 'copia_fisica', nombre: 'Copia Física' },
+      { clave: 'copia_digital', nombre: 'Copia Digital' },
+      { clave: 'digitalizacion', nombre: 'Digitalización de Original Físico' }
+    ];
+
     await ensureRoles(roles);
     await ensureDepartamentos(departamentos);
     // Obtener lista de departamentos ya creados para asignar a usuarios
     const allDepts = await prisma.departamentos.findMany({ select: { id: true, nombre: true } });
     await ensurePeriodos(periodos);
     await ensureTipos(tipos);
+
+  // Crear catálogos documentales
+  await ensureCuadroClasificacion(cuadroClasificacion);
+  await ensureValoresDocumentales(valoresDocumentales);
+  await ensurePlazosConservacion(plazosConservacion);
+  await ensureDestinosFinales(destinosFinales);
+  await ensureSoportesDocumentales(soportesDocumentales);
 
     // Priorizar usuarios desde seed_users (si existe)
   const users = Array.isArray(seedUsers) ? seedUsers : (seedUsers.users || []);

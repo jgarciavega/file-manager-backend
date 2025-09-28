@@ -15,12 +15,12 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/usuarios?page=1&limit=20",
+              "raw": "{{base_url}}/api/usuarios?page=1&limit=10",
               "host": ["{{base_url}}"],
               "path": ["api","usuarios"],
               "query": [
                 {"key":"page","value":"1"},
-                {"key":"limit","value":"20"}
+                {"key":"limit","value":"10"}
               ]
             }
           }
@@ -55,18 +55,41 @@
     {
       "name": "Documentos",
       "item": [
-        {"name":"Listar documentos","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/documentos?page=1&limit=20","host":["{{base_url}}"],"path":["api","documentos"],"query":[{"key":"page","value":"1"},{"key":"limit","value":"20"}]}}},
+  {"name":"Listar documentos","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/documentos?page=1&limit=10","host":["{{base_url}}"],"path":["api","documentos"],"query":[{"key":"page","value":"1"},{"key":"limit","value":"10"}]}}},
         {"name":"Obtener documento por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/documentos/:id","host":["{{base_url}}"],"path":["api","documentos",":id"]}}},
-        {"name":"Crear documento (metadata)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nombre\": \"Acta de Reunión\",\n  \"descripcion\": \"Acta de la reunión trimestral\",\n  \"mime\": \"application/pdf\",\n  \"ruta\": \"uploads/acta-trimestral.pdf\",\n  \"usuarios_id\": 1,\n  \"tipos_documentos_id\": 1,\n  \"departamentos_id\": 1,\n  \"periodos_id\": 1\n}"},"url":{"raw":"{{base_url}}/api/documentos","host":["{{base_url}}"],"path":["api","documentos"]}}},
-        {"name":"Actualizar documento","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"nombre\": \"Acta actualizada\" }"},"url":{"raw":"{{base_url}}/api/documentos/:id","host":["{{base_url}}"],"path":["api","documentos",":id"]}}},
+  {"name":"Crear documento (metadata)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nombre\": \"Acta de Reunión\",\n  \"descripcion\": \"Acta de la reunión trimestral\",\n  \"mime\": \"application/pdf\",\n  \"ruta\": \"uploads/acta-trimestral.pdf\",\n  \"file_key\": \"acta-trimestral.pdf\",\n  \"size\": 12345,\n  \"checksum\": null,\n  \"tipos_documentos_id\": 1,\n  \"usuarios_id\": 1,\n  \"fecha_creacion\": \"2025-09-27T12:00:00.000Z\",\n  \"fecha_subida\": \"2025-09-27T12:00:00.000Z\",\n  \"departamentos_id\": 1,\n  \"periodos_id\": 1,\n  \"nivel_acceso\": \"PUBLIC\",\n  \"codigo_clasificacion\": \"001\",\n  \"codigo_clasificacion_id\": 1,\n  \"numero_expediente\": \"EXP-001\",\n  \"serie\": \"S-1\",\n  \"subserie\": \"SS-1\",\n  \"valor_documental\": \"TEMPORAL\",\n  \"valor_documental_id\": 1,\n  \"plazo_conservacion\": \"5 años\",\n  \"plazo_conservacion_id\": 1,\n  \"destino_final\": \"Conservación Permanente\",\n  \"destino_final_id\": 1,\n  \"soporte\": \"DIGITAL\",\n  \"soporte_id\": 1,\n  \"procedencia\": \"manual\",\n  \"folio\": \"F-001\",\n  \"tipo_documento_text\": \"Acta\",\n  \"estado_vigencia\": \"VIGENTE\"\n}"},"url":{"raw":"{{base_url}}/api/documentos","host":["{{base_url}}"],"path":["api","documentos"]}}},
+  {"name":"Actualizar documento","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"nombre\": \"Acta actualizada\" }"},"url":{"raw":"{{base_url}}/api/documentos/:id","host":["{{base_url}}"],"path":["api","documentos",":id"]}}},
         {"name":"Eliminar documento","request":{"method":"DELETE","header":[],"url":{"raw":"{{base_url}}/api/documentos/:id","host":["{{base_url}}"],"path":["api","documentos",":id"]}}},
-        {"name":"Subir archivo (multipart) - solo pdf/docx/xlsx, 50MB max","request":{"method":"POST","header":[{"key":"Content-Type","value":"multipart/form-data"}],"body":{"mode":"formdata","formdata":[{"key":"file","type":"file"},{"key":"usuarios_id","value":"1","type":"text"},{"key":"descripcion","value":"Subida de prueba","type":"text"},{"key":"tipos_documentos_id","value":"1","type":"text"},{"key":"departamentos_id","value":"1","type":"text"},{"key":"periodos_id","value":"1","type":"text"}]},"url":{"raw":"{{base_url}}/api/documentos/upload","host":["{{base_url}}"],"path":["api","documentos","upload"]}}}
+        {"name":"Subir archivo (multipart) - todos los campos, solo pdf/docx/xlsx, 50MB max","request":{"method":"POST","header":[{"key":"Content-Type","value":"multipart/form-data"}],"body":{"mode":"formdata","formdata":[
+          {"key":"file","type":"file"},
+          {"key":"nombre","value":"Acta de Reunión","type":"text"},
+          {"key":"descripcion","value":"Acta de la reunión trimestral","type":"text"},
+          {"key":"usuarios_id","value":"1","type":"text"},
+          {"key":"tipos_documentos_id","value":"1","type":"text"},
+          {"key":"departamentos_id","value":"1","type":"text"},
+          {"key":"periodos_id","value":"1","type":"text"},
+          {"key":"codigo_clasificacion_id","value":"1","type":"text"},
+          {"key":"valor_documental_id","value":"1","type":"text"},
+          {"key":"plazo_conservacion_id","value":"1","type":"text"},
+          {"key":"destino_final_id","value":"1","type":"text"},
+          {"key":"soporte_id","value":"1","type":"text"},
+          {"key":"numero_expediente","value":"EXP-001","type":"text"},
+          {"key":"serie","value":"S-1","type":"text"},
+          {"key":"subserie","value":"SS-1","type":"text"},
+          {"key":"folio","value":"F-001","type":"text"},
+          {"key":"tipo_documento_text","value":"Acta","type":"text"},
+          {"key":"nivel_acceso","value":"PUBLIC","type":"text"},
+          {"key":"procedencia","value":"manual","type":"text"},
+          {"key":"estado_vigencia","value":"VIGENTE","type":"text"},
+          {"key":"fecha_creacion","value":"2025-09-27T12:00:00.000Z","type":"text"},
+          {"key":"fecha_subida","value":"2025-09-27T12:00:00.000Z","type":"text"}
+        ]},"url":{"raw":"{{base_url}}/api/documentos/upload","host":["{{base_url}}"],"path":["api","documentos","upload"]}}}
       ]
     },
     {
       "name": "Bitacora",
       "item": [
-        {"name":"Listar bitacora","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/bitacora?page=1&limit=20","host":["{{base_url}}"],"path":["api","bitacora"],"query":[{"key":"page","value":"1"},{"key":"limit","value":"20"}]}}},
+  {"name":"Listar bitacora","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/bitacora?page=1&limit=10","host":["{{base_url}}"],"path":["api","bitacora"],"query":[{"key":"page","value":"1"},{"key":"limit","value":"10"}]}}},
         {"name":"Obtener registro bitacora","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/bitacora/:id","host":["{{base_url}}"],"path":["api","bitacora",":id"]}}},
         {"name":"Crear registro bitacora","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"accion\": \"subida\", \"descripcion\": \"Se subió un archivo\", \"usuarios_id\": 1 }"},"url":{"raw":"{{base_url}}/api/bitacora","host":["{{base_url}}"],"path":["api","bitacora"]}}}
       ]
@@ -97,6 +120,22 @@
       "item": [
         {"name":"Listar tipos","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/tiposDocumentos","host":["{{base_url}}"],"path":["api","tiposDocumentos"]}}},
         {"name":"Obtener tipo por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/tiposDocumentos/:id","host":["{{base_url}}"],"path":["api","tiposDocumentos",":id"]}}}
+      ]
+    }
+    ,
+    {
+      "name": "Catálogos Documentales",
+      "item": [
+        {"name":"Listar cuadro_clasificacion","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/cuadro_clasificacion","host":["{{base_url}}"],"path":["api","catalogs","cuadro_clasificacion"]}}},
+        {"name":"Obtener cuadro_clasificacion por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/cuadro_clasificacion/:id","host":["{{base_url}}"],"path":["api","catalogs","cuadro_clasificacion",":id"]}}},
+        {"name":"Listar valores_documentales","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/valores_documentales","host":["{{base_url}}"],"path":["api","catalogs","valores_documentales"]}}},
+        {"name":"Obtener valores_documentales por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/valores_documentales/:id","host":["{{base_url}}"],"path":["api","catalogs","valores_documentales",":id"]}}},
+        {"name":"Listar plazos_conservacion","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/plazos_conservacion","host":["{{base_url}}"],"path":["api","catalogs","plazos_conservacion"]}}},
+        {"name":"Obtener plazos_conservacion por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/plazos_conservacion/:id","host":["{{base_url}}"],"path":["api","catalogs","plazos_conservacion",":id"]}}},
+        {"name":"Listar destinos_finales","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/destinos_finales","host":["{{base_url}}"],"path":["api","catalogs","destinos_finales"]}}},
+        {"name":"Obtener destinos_finales por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/destinos_finales/:id","host":["{{base_url}}"],"path":["api","catalogs","destinos_finales",":id"]}}},
+        {"name":"Listar soportes_documentales","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/soportes_documentales","host":["{{base_url}}"],"path":["api","catalogs","soportes_documentales"]}}},
+        {"name":"Obtener soportes_documentales por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/soportes_documentales/:id","host":["{{base_url}}"],"path":["api","catalogs","soportes_documentales",":id"]}}}
       ]
     }
   ],
