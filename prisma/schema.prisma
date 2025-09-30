@@ -38,16 +38,10 @@ model documentos {
   fecha_subida         DateTime?
   departamentos_id     Int?
   nivel_acceso         NivelAcceso?
-  codigo_clasificacion String?
   numero_expediente    String?
   serie                String?
   subserie             String?
-  // campos legacy (compatibilidad)
-  valor_documental     ValorDocumental?
-  plazo_conservacion   String?
   periodos_id          Int?
-  destino_final        String?
-  soporte              Soporte?
 
   // Nuevas referencias normalizadas (tablas relacionadas)
   codigo_clasificacion_id Int?
@@ -66,7 +60,6 @@ model documentos {
   soporte_ref           soportes_documentales? @relation(fields: [soporte_id], references: [id], onDelete: SetNull)
   procedencia          String?
   folio                String?
-  tipo_documento_text  String?
   estado_vigencia      String?
   tipos_documentos     tipos_documentos? @relation(fields: [tipos_documentos_id], references: [id], onDelete: SetNull)
   usuarios             usuarios?         @relation(fields: [usuarios_id], references: [id], onDelete: SetNull)
@@ -171,27 +164,19 @@ enum procesos_resultado {
 }
 
 enum roles_tipo {
+  superAdmin
   admin
   capturista
   revisor
 }
 
 enum NivelAcceso {
-  PUBLIC
-  CONFIDENTIAL
-  RESTRICTED
+  PUBLICO
+  CONFIDENCIAL
+  RESTRINGIDO
 }
 
-enum ValorDocumental {
-  TEMPORAL
-  PERMANENT
-}
 
-enum Soporte {
-  DIGITAL
-  FISICO
-  HIBRIDO
-}
 
 // Nuevos modelos normalizados para metadatos documentales
 model cuadro_clasificacion {

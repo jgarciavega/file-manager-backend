@@ -2,14 +2,15 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const prisma = new PrismaClient();
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-// Usuarios prioritarios (incrustados aquí; antes estaban en seed_users_data.js)
+// Usuarios prioritarios (embebidos)
 const seedUsers = [
-
+  { nombre: 'Admin', apellidos: 'User', email: 'admin.user@example.com', password: 'secret' },
   { nombre: 'Jorge', apellidos: 'Garcia Vega', email: 'jorge.garcia@apibcs.com.mx', password: '123456' },
   { nombre: 'Ana', apellidos: 'García', email: 'ana.garcia@example.com', password: 'secret' },
   { nombre: 'Luis', apellidos: 'Martínez', email: 'luis.martinez@example.com', password: 'secret' },
@@ -21,9 +22,7 @@ const seedUsers = [
 async function ensureRoles(roles) {
   for (const r of roles) {
     const exists = await prisma.roles.findFirst({ where: { tipo: r.tipo } });
-    if (!exists) {
-      await prisma.roles.create({ data: r });
-    }
+    if (!exists) await prisma.roles.create({ data: r });
   }
 }
 
@@ -36,6 +35,16 @@ async function ensureDepartamentos(list) {
 
 async function ensurePeriodos(list) {
   for (const p of list) {
+    // Normalizar tipos Date si vienen como string
+    if (p.fecha_inicio && !(p.fecha_inicio instanceof Date)) p.fecha_inicio = new Date(p.fecha_inicio);
+    if (p.fecha_final && !(p.fecha_final instanceof Date)) p.fecha_final = new Date(p.fecha_final);
+
+    // Validación: fecha_inicio no debe ser mayor que fecha_final
+    if (p.fecha_inicio && p.fecha_final && p.fecha_inicio > p.fecha_final) {
+      console.warn(`Seed: periodo "${p.periodo}" tiene fecha_inicio > fecha_final. Ajustando fecha_final = fecha_inicio.`);
+      p.fecha_final = new Date(p.fecha_inicio);
+    }
+
     const exists = await prisma.periodos.findFirst({ where: { periodo: p.periodo } });
     if (!exists) await prisma.periodos.create({ data: p });
   }
@@ -98,7 +107,6 @@ async function createUsers(users) {
 }
 
 async function assignRoles(userMap) {
-  // userMap: [{ userEmail, roleTipo }]
   for (const u of userMap) {
     const user = await prisma.usuarios.findUnique({ where: { email: u.userEmail } });
     const role = await prisma.roles.findFirst({ where: { tipo: u.roleTipo } });
@@ -112,7 +120,7 @@ async function assignRoles(userMap) {
 
 async function createDocuments({ count = 20 } = {}) {
   const users = await prisma.usuarios.findMany({ select: { id: true, email: true } });
-  const tipos = await prisma.tipos_documentos.findMany({ select: { id: true } });
+  const tipos = await prisma.tipos_documentos.findMany({ select: { id: true, tipo: true } });
   const departamentos = await prisma.departamentos.findMany({ select: { id: true } });
   const periodos = await prisma.periodos.findMany({ select: { id: true } });
   const cuadros = await prisma.cuadro_clasificacion.findMany({ select: { id: true, codigo: true, titulo: true } });
@@ -140,16 +148,35 @@ async function createDocuments({ count = 20 } = {}) {
     const filename = `${baseName.replace(/\s+/g, '_')}_${Date.now()}_${i}${pickMime.ext}`;
     const filepath = path.join(UPLOADS_DIR, filename);
 
-    // generar contenido simulado (no binario real para pdf/docx/xlsx, pero sirve como placeholder)
     const content = `${baseName} - documento generado por seed (${i})\nFecha: ${new Date().toISOString()}`;
     fs.writeFileSync(filepath, content);
     const stats = fs.statSync(filepath);
+
+    // calcular checksum SHA-256 del archivo generado
+    let checksum = null;
+    try {
+      const hash = crypto.createHash('sha256');
+      const fileBuf = fs.readFileSync(filepath);
+      hash.update(fileBuf);
+      checksum = hash.digest('hex');
+    } catch (e) {
+      console.error('Error calculando checksum en seed para', filepath, e);
+    }
 
     const cuadro = cuadros.length ? cuadros[i % cuadros.length] : null;
     const valor = valores.length ? valores[i % valores.length] : null;
     const plazo = plazos.length ? plazos[i % plazos.length] : null;
     const destino = destinos.length ? destinos[i % destinos.length] : null;
     const soporte = soportes.length ? soportes[i % soportes.length] : null;
+
+    // generar campos adicionales: nivel_acceso, numero_expediente, serie, subserie, folio, tipo_documento_text
+  const nivelOptions = ['PUBLICO', 'CONFIDENCIAL', 'RESTRINGIDO'];
+    const nivel_acceso = nivelOptions[i % nivelOptions.length];
+    const fechaCreacion = new Date(Date.now() - (i * 86400000));
+    const numero_expediente = `EXP-${fechaCreacion.getFullYear()}-${String(i + 1).padStart(4, '0')}`;
+    const serie = cuadro ? `SER-${cuadro.codigo}` : `SER-000`;
+    const subserie = cuadro ? `SUB-${(cuadro.codigo || '0').slice(0, 3)}` : `SUB-000`;
+    const folio = String(i + 1);
 
     const createData = {
       nombre: baseName,
@@ -158,22 +185,20 @@ async function createDocuments({ count = 20 } = {}) {
       ruta: `uploads/${filename}`,
       file_key: filename,
       size: stats.size,
-      checksum: null,
+      checksum: checksum,
       tipos_documentos_id: tipos[i % tipos.length].id,
       usuarios_id: users[i % users.length].id,
-      fecha_creacion: new Date(Date.now() - (i * 86400000)), // escalonar fechas
-      fecha_subida: new Date(Date.now() - (i * 86400000)),
+      fecha_creacion: fechaCreacion,
+      fecha_subida: fechaCreacion,
       departamentos_id: departamentos.length ? departamentos[i % departamentos.length].id : null,
       periodos_id: periodos.length ? periodos[i % periodos.length].id : null,
-  // legacy strings (llenar desde los catálogos cuando exista)
-  // nota: `valor_documental` y `soporte` en el schema son enums; no escribimos strings inválidos
-  codigo_clasificacion: cuadro ? cuadro.codigo : null,
-  valor_documental: null,
-  plazo_conservacion: plazo ? plazo.descripcion : null,
-  destino_final: destino ? destino.nombre : null,
-  soporte: null,
-
-      // referencias a catálogos (FK)
+      nivel_acceso,
+      numero_expediente,
+      serie,
+      subserie,
+      folio,
+  // tipo_documento_text eliminado (usar FK tipos_documentos_id)
+      // Sólo guardamos referencias normalizadas
       codigo_clasificacion_id: cuadro ? cuadro.id : null,
       valor_documental_id: valor ? valor.id : null,
       plazo_conservacion_id: plazo ? plazo.id : null,
@@ -202,10 +227,9 @@ async function createFavoritos() {
 
 async function createBitacora() {
   const users = await prisma.usuarios.findMany({ select: { id: true } });
-  const acciones = ['login', 'creacion', 'subida', 'actualizacion', 'eliminacion', 'descarga', 'revisión'];
+  const acciones = ['login', 'creacion', 'subida', 'actualizacion', 'eliminacion', 'descarga', 'revision'];
   const ips = ['127.0.0.1', '192.168.1.10', '10.0.0.5'];
 
-  // Crear múltiples entradas por usuario con distintas acciones
   for (const u of users) {
     const count = 3 + (u.id % 3);
     for (let i = 0; i < count; i++) {
@@ -216,7 +240,7 @@ async function createBitacora() {
           rol: null,
           accion,
           ip: ips[(u.id + i) % ips.length],
-          descripcion: `Seed: acción ${accion} para usuario ${u.id}`,
+          descripcion: `Seed: accion ${accion} para usuario ${u.id}`,
           fecha_inicio: new Date(Date.now() - ((i + u.id) * 3600000)),
           fecha_act: new Date(Date.now() - ((i + u.id) * 3600000))
         }
@@ -230,6 +254,7 @@ async function main() {
     console.log('Iniciando seed unificado...');
 
     const roles = [
+      { tipo: 'superAdmin', descripcion: 'Super Administrador', activo: true, fecha_creacion: new Date() },
       { tipo: 'admin', descripcion: 'Administrador', activo: true, fecha_creacion: new Date() },
       { tipo: 'capturista', descripcion: 'Capturista', activo: true, fecha_creacion: new Date() },
       { tipo: 'revisor', descripcion: 'Revisor', activo: true, fecha_creacion: new Date() }
@@ -252,9 +277,13 @@ async function main() {
     ];
 
     const tipos = [
-      { tipo: 'Informe' },
+      { tipo: 'Acuerdo' },
       { tipo: 'Acta' },
-      { tipo: 'Contrato' }
+      { tipo: 'Circular' },
+      { tipo: 'Informe' },
+      { tipo: 'Memorándum' },
+      { tipo: 'Oficio' },
+      { tipo: 'Otro' }
     ];
 
     const cuadroClasificacion = [
@@ -311,23 +340,17 @@ async function main() {
 
     await ensureRoles(roles);
     await ensureDepartamentos(departamentos);
-    // Obtener lista de departamentos ya creados para asignar a usuarios
     const allDepts = await prisma.departamentos.findMany({ select: { id: true, nombre: true } });
     await ensurePeriodos(periodos);
     await ensureTipos(tipos);
 
-  // Crear catálogos documentales
-  await ensureCuadroClasificacion(cuadroClasificacion);
-  await ensureValoresDocumentales(valoresDocumentales);
-  await ensurePlazosConservacion(plazosConservacion);
-  await ensureDestinosFinales(destinosFinales);
-  await ensureSoportesDocumentales(soportesDocumentales);
+    await ensureCuadroClasificacion(cuadroClasificacion);
+    await ensureValoresDocumentales(valoresDocumentales);
+    await ensurePlazosConservacion(plazosConservacion);
+    await ensureDestinosFinales(destinosFinales);
+    await ensureSoportesDocumentales(soportesDocumentales);
 
-    // Priorizar usuarios desde seed_users (si existe)
-  const users = Array.isArray(seedUsers) ? seedUsers : (seedUsers.users || []);
-    if (!users || users.length === 0) {
-      console.log('No se encontraron usuarios en seed_users, usando lista por defecto.');
-    }
+    const users = seedUsers;
 
     const defaultUsers = users && users.length ? users : [
       { nombre: 'Jorge', apellidos: 'Garcia Vega', email: 'jorge.garcia@apibcs.com.mx', password: '123456' },
@@ -335,12 +358,9 @@ async function main() {
       { nombre: 'Luis', apellidos: 'Martínez', email: 'luis.martinez@example.com', password: 'secret' }
     ];
 
-    // Crear/actualizar usuarios y asignar departamentos_id
     for (let i = 0; i < defaultUsers.length; i++) {
       const u = defaultUsers[i];
       const hashed = await bcrypt.hash(u.password, 10);
-
-      // Determinar departamento: si viene nombre en u.departamento, buscar; si no, usar round-robin
       let deptId = null;
       if (u.departamento) {
         const deptFound = await prisma.departamentos.findFirst({ where: { nombre: u.departamento } });
@@ -375,32 +395,29 @@ async function main() {
       console.log('Seed usuario:', u.email, 'deptId:', deptId);
     }
 
-    // asignar roles por defecto (mapear por email)
-     const roleMap = [
-       { userEmail: 'jorge.garcia@apibcs.com.mx', roleTipo: 'admin' },
-       { userEmail: 'ana.garcia@example.com', roleTipo: 'capturista' },
-       { userEmail: 'luis.martinez@example.com', roleTipo: 'revisor' }
-     ];
+    const roleMap = [
+      { userEmail: 'admin.user@example.com', roleTipo: 'superAdmin' },
+      { userEmail: 'jorge.garcia@apibcs.com.mx', roleTipo: 'admin' },
+      { userEmail: 'ana.garcia@example.com', roleTipo: 'capturista' },
+      { userEmail: 'luis.martinez@example.com', roleTipo: 'revisor' }
+    ];
 
-     await assignRoles(roleMap);
+    await assignRoles(roleMap);
 
-    // Asignar roles por defecto a usuarios restantes: solo 'capturista' o 'revisor'
     const defaultRoleOptions = ['capturista', 'revisor'];
     const remainingUsers = await prisma.usuarios.findMany({ where: { role_id: null }, select: { id: true, email: true } });
     if (remainingUsers.length > 0) {
-      console.log(`Asignando roles por defecto a ${remainingUsers.length} usuarios...`);
       for (let i = 0; i < remainingUsers.length; i++) {
         const u = remainingUsers[i];
-        const tipo = defaultRoleOptions[i % defaultRoleOptions.length]; // alternar para reproducibilidad
+        const tipo = defaultRoleOptions[i % defaultRoleOptions.length];
         const role = await prisma.roles.findFirst({ where: { tipo } });
         if (role) {
           await prisma.usuarios.update({ where: { id: u.id }, data: { role_id: role.id } });
-          console.log(` - ${u.email} => ${tipo}`);
         }
       }
     }
 
-    await createDocuments({ count: 30 });
+    await createDocuments({ count: 10 });
     await createFavoritos();
     await createBitacora();
 

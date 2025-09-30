@@ -8,6 +8,7 @@ const { loadUserRoles, requireAnyRole, requireRole } = require('../middleware/ro
 const prisma = new PrismaClient();
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const multer = require('multer');
 
 // configurar multer
@@ -42,6 +43,17 @@ const upload = multer({
     else cb(new Error('Tipo de archivo no permitido. Solo PDF, Word y Excel.'));
   }
 });
+
+// helper: calcular checksum SHA-256 de un archivo por streaming
+async function computeFileChecksum(filePath) {
+  return await new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const rs = fs.createReadStream(filePath);
+    rs.on('data', (chunk) => hash.update(chunk));
+    rs.on('end', () => resolve(hash.digest('hex')));
+    rs.on('error', (err) => reject(err));
+  });
+}
 
 // GET /api/documentos - Obtener todos los documentos
 router.get('/', async (req, res) => {
@@ -121,17 +133,12 @@ router.post('/', verifyToken, async (req, res) => {
       tipos_documentos_id,
       departamentos_id,
       periodos_id,
-      // catálogos: puede llegar como *_id o como clave/string
+      // ahora solo aceptamos FK *_id para catálogos
       codigo_clasificacion_id,
-      codigo_clasificacion,
       valor_documental_id,
-      valor_documental,
       plazo_conservacion_id,
-      plazo_conservacion,
       destino_final_id,
-      destino_final,
-      soporte_id,
-      soporte
+      soporte_id
     } = req.body;
 
     // Campos obligatorios: todos los metadatos
@@ -144,12 +151,12 @@ router.post('/', verifyToken, async (req, res) => {
     if (!tipos_documentos_id) missing.push('tipos_documentos_id');
     if (!departamentos_id) missing.push('departamentos_id');
     if (!periodos_id) missing.push('periodos_id');
-    // catálogos: aceptamos id o campo legacy/clave
-    if (!codigo_clasificacion_id && !codigo_clasificacion) missing.push('codigo_clasificacion_id|codigo_clasificacion');
-    if (!valor_documental_id && !valor_documental) missing.push('valor_documental_id|valor_documental');
-    if (!plazo_conservacion_id && !plazo_conservacion) missing.push('plazo_conservacion_id|plazo_conservacion');
-    if (!destino_final_id && !destino_final) missing.push('destino_final_id|destino_final');
-    if (!soporte_id && !soporte) missing.push('soporte_id|soporte');
+    // catálogos: ahora sólo ids
+    if (!codigo_clasificacion_id) missing.push('codigo_clasificacion_id');
+    if (!valor_documental_id) missing.push('valor_documental_id');
+    if (!plazo_conservacion_id) missing.push('plazo_conservacion_id');
+    if (!destino_final_id) missing.push('destino_final_id');
+    if (!soporte_id) missing.push('soporte_id');
 
     if (missing.length) return errorResponse(res, `Faltan campos obligatorios: ${missing.join(', ')}`, 400);
 
@@ -176,63 +183,26 @@ router.post('/', verifyToken, async (req, res) => {
     const periodo = await prisma.periodos.findUnique({ where: { id: parseInt(periodos_id) } });
     if (!periodo) return errorResponse(res, 'Periodo (periodos_id) no encontrado', 404);
 
-    // Resolver/validar catálogos: cuadro_clasificacion (codigo), valores_documentales (clave), plazos, destinos, soportes
-    let codigoClasId = codigo_clasificacion_id ? parseInt(codigo_clasificacion_id) : null;
-    if (!codigoClasId && codigo_clasificacion) {
-      const found = await prisma.cuadro_clasificacion.findFirst({ where: { codigo: codigo_clasificacion } });
-      if (!found) return errorResponse(res, 'Cuadro de clasificación no encontrado por codigo', 404);
-      codigoClasId = found.id;
-    } else if (codigoClasId) {
-      const f = await prisma.cuadro_clasificacion.findUnique({ where: { id: codigoClasId } });
-      if (!f) return errorResponse(res, 'Cuadro de clasificación (id) no encontrado', 404);
-    }
+    // Validar catálogos por id (todos deben existir)
+    const codigoClasId = parseInt(codigo_clasificacion_id);
+    const fCodigo = await prisma.cuadro_clasificacion.findUnique({ where: { id: codigoClasId } });
+    if (!fCodigo) return errorResponse(res, 'Cuadro de clasificación (codigo_clasificacion_id) no encontrado', 404);
 
-    let valorDocId = valor_documental_id ? parseInt(valor_documental_id) : null;
-    if (!valorDocId && valor_documental) {
-      const found = await prisma.valores_documentales.findFirst({ where: { clave: valor_documental } });
-      if (!found) return errorResponse(res, 'Valor documental no encontrado por clave', 404);
-      valorDocId = found.id;
-    } else if (valorDocId) {
-      const f = await prisma.valores_documentales.findUnique({ where: { id: valorDocId } });
-      if (!f) return errorResponse(res, 'Valor documental (id) no encontrado', 404);
-    }
+    const valorDocId = parseInt(valor_documental_id);
+    const fValor = await prisma.valores_documentales.findUnique({ where: { id: valorDocId } });
+    if (!fValor) return errorResponse(res, 'Valor documental (valor_documental_id) no encontrado', 404);
 
-    let plazoId = plazo_conservacion_id ? parseInt(plazo_conservacion_id) : null;
-    if (!plazoId && plazo_conservacion) {
-      const found = await prisma.plazos_conservacion.findFirst({ where: { clave: plazo_conservacion } });
-      if (!found) return errorResponse(res, 'Plazo de conservación no encontrado por clave', 404);
-      plazoId = found.id;
-    } else if (plazoId) {
-      const f = await prisma.plazos_conservacion.findUnique({ where: { id: plazoId } });
-      if (!f) return errorResponse(res, 'Plazo de conservación (id) no encontrado', 404);
-    }
+    const plazoId = parseInt(plazo_conservacion_id);
+    const fPlazo = await prisma.plazos_conservacion.findUnique({ where: { id: plazoId } });
+    if (!fPlazo) return errorResponse(res, 'Plazo de conservación (plazo_conservacion_id) no encontrado', 404);
 
-    let destinoId = destino_final_id ? parseInt(destino_final_id) : null;
-    if (!destinoId && destino_final) {
-      const found = await prisma.destinos_finales.findFirst({ where: { clave: destino_final } });
-      if (!found) return errorResponse(res, 'Destino final no encontrado por clave', 404);
-      destinoId = found.id;
-    } else if (destinoId) {
-      const f = await prisma.destinos_finales.findUnique({ where: { id: destinoId } });
-      if (!f) return errorResponse(res, 'Destino final (id) no encontrado', 404);
-    }
+    const destinoId = parseInt(destino_final_id);
+    const fDestino = await prisma.destinos_finales.findUnique({ where: { id: destinoId } });
+    if (!fDestino) return errorResponse(res, 'Destino final (destino_final_id) no encontrado', 404);
 
-    // placeholder removed; parse soporte id
-    let soporteIdVal = soporte_id ? parseInt(soporte_id) : null;
-    if (!soporteIdVal && soporte) {
-      const found = await prisma.soportes_documentales.findFirst({ where: { clave: soporte } });
-      if (!found) return errorResponse(res, 'Soporte documental no encontrado por clave', 404);
-      soporteIdVal = found.id;
-    } else if (soporteIdVal) {
-      const f = await prisma.soportes_documentales.findUnique({ where: { id: soporteIdVal } }).catch(() => null);
-      if (!f) {
-        // try to find by id normally
-        const f2 = await prisma.soportes_documentales.findUnique({ where: { id: soporteIdVal } });
-        if (!f2) return errorResponse(res, 'Soporte documental (id) no encontrado', 404);
-      }
-    }
-
-    // Note: earlier code used enum Soporte; we accept mapping via catalog table for normalized data
+    const soporteIdVal = parseInt(soporte_id);
+    const fSoporte = await prisma.soportes_documentales.findUnique({ where: { id: soporteIdVal } });
+    if (!fSoporte) return errorResponse(res, 'Soporte documental (soporte_id) no encontrado', 404);
 
     // crear documento y bitacora en una transacción para asegurar atomicidad
     const nuevoDocumento = await prisma.$transaction(async (tx) => {
@@ -246,11 +216,11 @@ router.post('/', verifyToken, async (req, res) => {
           tipos_documentos_id: parseInt(tipos_documentos_id),
           departamentos_id: parseInt(departamentos_id),
           periodos_id: parseInt(periodos_id),
-          codigo_clasificacion_id: codigoClasId || null,
-          valor_documental_id: valorDocId || null,
-          plazo_conservacion_id: plazoId || null,
-          destino_final_id: destinoId || null,
-          soporte_id: soporteIdVal || null,
+          codigo_clasificacion_id: codigoClasId,
+          valor_documental_id: valorDocId,
+          plazo_conservacion_id: plazoId,
+          destino_final_id: destinoId,
+          soporte_id: soporteIdVal,
           fecha_subida: new Date()
         },
         include: {
@@ -409,15 +379,10 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
       departamentos_id,
       periodos_id,
       codigo_clasificacion_id,
-      codigo_clasificacion,
       valor_documental_id,
-      valor_documental,
       plazo_conservacion_id,
-      plazo_conservacion,
       destino_final_id,
-      destino_final,
-      soporte_id,
-      soporte
+      soporte_id
     } = req.body;
 
     // Campos obligatorios
@@ -426,11 +391,11 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
     if (!tipos_documentos_id) missing.push('tipos_documentos_id');
     if (!departamentos_id) missing.push('departamentos_id');
     if (!periodos_id) missing.push('periodos_id');
-    if (!codigo_clasificacion_id && !codigo_clasificacion) missing.push('codigo_clasificacion_id|codigo_clasificacion');
-    if (!valor_documental_id && !valor_documental) missing.push('valor_documental_id|valor_documental');
-    if (!plazo_conservacion_id && !plazo_conservacion) missing.push('plazo_conservacion_id|plazo_conservacion');
-    if (!destino_final_id && !destino_final) missing.push('destino_final_id|destino_final');
-    if (!soporte_id && !soporte) missing.push('soporte_id|soporte');
+    if (!codigo_clasificacion_id) missing.push('codigo_clasificacion_id');
+    if (!valor_documental_id) missing.push('valor_documental_id');
+    if (!plazo_conservacion_id) missing.push('plazo_conservacion_id');
+    if (!destino_final_id) missing.push('destino_final_id');
+    if (!soporte_id) missing.push('soporte_id');
 
     if (missing.length) {
       try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}
@@ -459,60 +424,51 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
       return errorResponse(res, 'Periodo (periodos_id) no encontrado', 404);
     }
 
-    // Resolver catálogos (similar a POST /api/documentos)
-    let codigoClasId = codigo_clasificacion_id ? parseInt(codigo_clasificacion_id) : null;
-    if (!codigoClasId && codigo_clasificacion) {
-      const found = await prisma.cuadro_clasificacion.findFirst({ where: { codigo: codigo_clasificacion } });
-      if (!found) {
-        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}
-        return errorResponse(res, 'Cuadro de clasificación no encontrado por codigo', 404);
-      }
-      codigoClasId = found.id;
-    }
+    // Validar catálogos por id
+    const codigoClasId = parseInt(codigo_clasificacion_id);
+    const fCodigo = await prisma.cuadro_clasificacion.findUnique({ where: { id: codigoClasId } });
+    if (!fCodigo) { try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}; return errorResponse(res, 'Cuadro de clasificación (codigo_clasificacion_id) no encontrado', 404); }
 
-    let valorDocId = valor_documental_id ? parseInt(valor_documental_id) : null;
-    if (!valorDocId && valor_documental) {
-      const found = await prisma.valores_documentales.findFirst({ where: { clave: valor_documental } });
-      if (!found) {
-        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}
-        return errorResponse(res, 'Valor documental no encontrado por clave', 404);
-      }
-      valorDocId = found.id;
-    }
+    const valorDocId = parseInt(valor_documental_id);
+    const fValor = await prisma.valores_documentales.findUnique({ where: { id: valorDocId } });
+    if (!fValor) { try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}; return errorResponse(res, 'Valor documental (valor_documental_id) no encontrado', 404); }
 
-    let plazoId = plazo_conservacion_id ? parseInt(plazo_conservacion_id) : null;
-    if (!plazoId && plazo_conservacion) {
-      const found = await prisma.plazos_conservacion.findFirst({ where: { clave: plazo_conservacion } });
-      if (!found) {
-        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}
-        return errorResponse(res, 'Plazo de conservación no encontrado por clave', 404);
-      }
-      plazoId = found.id;
-    }
+    const plazoId = parseInt(plazo_conservacion_id);
+    const fPlazo = await prisma.plazos_conservacion.findUnique({ where: { id: plazoId } });
+    if (!fPlazo) { try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}; return errorResponse(res, 'Plazo de conservación (plazo_conservacion_id) no encontrado', 404); }
 
-    let destinoId = destino_final_id ? parseInt(destino_final_id) : null;
-    if (!destinoId && destino_final) {
-      const found = await prisma.destinos_finales.findFirst({ where: { clave: destino_final } });
-      if (!found) {
-        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}
-        return errorResponse(res, 'Destino final no encontrado por clave', 404);
-      }
-      destinoId = found.id;
-    }
+    const destinoId = parseInt(destino_final_id);
+    const fDestino = await prisma.destinos_finales.findUnique({ where: { id: destinoId } });
+    if (!fDestino) { try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}; return errorResponse(res, 'Destino final (destino_final_id) no encontrado', 404); }
 
-    let soporteIdVal = soporte_id ? parseInt(soporte_id) : null;
-    if (!soporteIdVal && soporte) {
-      const found = await prisma.soportes_documentales.findFirst({ where: { clave: soporte } });
-      if (!found) {
-        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}
-        return errorResponse(res, 'Soporte documental no encontrado por clave', 404);
-      }
-      soporteIdVal = found.id;
-    }
+    const soporteIdVal = parseInt(soporte_id);
+    const fSoporte = await prisma.soportes_documentales.findUnique({ where: { id: soporteIdVal } });
+    if (!fSoporte) { try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e){}; return errorResponse(res, 'Soporte documental (soporte_id) no encontrado', 404); }
 
     // crear registro en documentos y bitacora de forma segura
     let nuevoDocumento = null;
     try {
+      // calcular checksum antes de insertar en la DB
+      let checksum = null;
+      try {
+        checksum = await computeFileChecksum(filePath);
+      } catch (e) {
+        console.error('Error al calcular checksum:', e);
+        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(err){}
+        return errorResponse(res, 'Error al calcular checksum del archivo', 500, e.message || e);
+      }
+      // generar campos por defecto/derivados para que la respuesta los incluya
+      const fecha_subida = new Date();
+      const fecha_creacion = fecha_subida; // mismo valor por defecto
+  // nivel de acceso: default PUBLICO
+  const nivel_acceso = 'PUBLICO';
+      // numero_expediente: EXP-YYYY-XXXX (XXXX = timestamp suffix)
+      const numero_expediente = `EXP-${fecha_subida.getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+      const serie = fCodigo && fCodigo.codigo ? `SER-${fCodigo.codigo}` : 'SER-000';
+      const subserie = fCodigo && fCodigo.codigo ? `SUB-${String(fCodigo.codigo).slice(0,3)}` : 'SUB-000';
+      const folio = String(Date.now());
+      const procedencia = 'upload';
+      const estado_vigencia = 'VIGENTE';
       // Usar transacción para insertar documento y bitacora atomically
       const result = await prisma.$transaction(async (tx) => {
         const doc = await tx.documentos.create({
@@ -522,17 +478,27 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
             mime: mimetype,
             ruta: `uploads/${filename}`,
             file_key: filename,
+            checksum: checksum,
             size: size,
             tipos_documentos_id: parseInt(tipos_documentos_id),
             usuarios_id: parseInt(usuarios_id),
             departamentos_id: parseInt(departamentos_id),
             periodos_id: parseInt(periodos_id),
-            codigo_clasificacion_id: codigoClasId || null,
-            valor_documental_id: valorDocId || null,
-            plazo_conservacion_id: plazoId || null,
-            destino_final_id: destinoId || null,
-            soporte_id: soporteIdVal || null,
-            fecha_subida: new Date()
+            fecha_creacion: fecha_creacion,
+            fecha_subida: fecha_subida,
+            nivel_acceso: nivel_acceso,
+            numero_expediente: numero_expediente,
+            serie: serie,
+            subserie: subserie,
+            folio: folio,
+            // tipo_documento_text eliminado: se usa FK tipos_documentos_id
+            procedencia: procedencia,
+            estado_vigencia: estado_vigencia,
+            codigo_clasificacion_id: codigoClasId,
+            valor_documental_id: valorDocId,
+            plazo_conservacion_id: plazoId,
+            destino_final_id: destinoId,
+            soporte_id: soporteIdVal
           }
         });
 

@@ -29,6 +29,7 @@ const { loadUserRoles } = require('./src/middleware/roles');
 const authRoutes = require('./src/routes/auth');
 const { verifyToken } = require('./src/middleware/auth');
 const tiposDocumentosRoutes = require("./src/routes/tiposDocumentos");
+const favoritosRoutes = require("./src/routes/favoritos");
 
 // Montar /api/auth primero (debe permanecer público para login/register)
 app.use('/api/auth', authRoutes);
@@ -46,20 +47,8 @@ app.use("/api/tipos-documentos", tiposDocumentosRoutes);
 app.use("/api/bitacora", bitacoraRoutes.router || bitacoraRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/departamentos', departamentosRoutes);
-
-// Ruta de prueba
-app.get("/", (req, res) => {
-  res.json({
-    message: 'Backend de documentos funcionando correctamente',
-    endpoints: {
-      usuarios: '/api/usuarios',
-      documentos: '/api/documentos'
-    }
-  });
-});
+app.use('/api/favoritos', favoritosRoutes);
 
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor backend escuchando en http://localhost:${PORT}`);
-  console.log(`📁 Documentos API: http://localhost:${PORT}/api/documentos`);
-  console.log(`👥 Usuarios API: http://localhost:${PORT}/api/usuarios`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
