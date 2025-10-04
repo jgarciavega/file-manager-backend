@@ -53,6 +53,28 @@
       ]
     },
     {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{ \"email\": \"admin.user@example.com\", \"password\": \"secret\" }"},
+            "url": {"raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"]}
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{base_url}}/api/auth/me", "host": ["{{base_url}}"], "path": ["api", "auth", "me"]}
+          }
+        }
+      ]
+    },
+    {
       "name": "Documentos",
       "item": [
   {"name":"Listar documentos","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/documentos?page=1&limit=10","host":["{{base_url}}"],"path":["api","documentos"],"query":[{"key":"page","value":"1"},{"key":"limit","value":"10"}]}}},
@@ -125,16 +147,56 @@
     {
       "name": "Catálogos Documentales",
       "item": [
-        {"name":"Listar cuadro_clasificacion","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/cuadro_clasificacion","host":["{{base_url}}"],"path":["api","catalogs","cuadro_clasificacion"]}}},
-        {"name":"Obtener cuadro_clasificacion por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/cuadro_clasificacion/:id","host":["{{base_url}}"],"path":["api","catalogs","cuadro_clasificacion",":id"]}}},
-        {"name":"Listar valores_documentales","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/valores_documentales","host":["{{base_url}}"],"path":["api","catalogs","valores_documentales"]}}},
-        {"name":"Obtener valores_documentales por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/valores_documentales/:id","host":["{{base_url}}"],"path":["api","catalogs","valores_documentales",":id"]}}},
-        {"name":"Listar plazos_conservacion","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/plazos_conservacion","host":["{{base_url}}"],"path":["api","catalogs","plazos_conservacion"]}}},
-        {"name":"Obtener plazos_conservacion por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/plazos_conservacion/:id","host":["{{base_url}}"],"path":["api","catalogs","plazos_conservacion",":id"]}}},
-        {"name":"Listar destinos_finales","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/destinos_finales","host":["{{base_url}}"],"path":["api","catalogs","destinos_finales"]}}},
-        {"name":"Obtener destinos_finales por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/destinos_finales/:id","host":["{{base_url}}"],"path":["api","catalogs","destinos_finales",":id"]}}},
-        {"name":"Listar soportes_documentales","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/soportes_documentales","host":["{{base_url}}"],"path":["api","catalogs","soportes_documentales"]}}},
-        {"name":"Obtener soportes_documentales por id","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/catalogs/soportes_documentales/:id","host":["{{base_url}}"],"path":["api","catalogs","soportes_documentales",":id"]}}}
+        {
+          "name": "cuadro_clasificacion",
+          "item": [
+            {"name": "Listar cuadro_clasificacion", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/cuadro_clasificacion?page=1&limit=10", "host": ["{{base_url}}"], "path": ["api", "catalogs", "cuadro_clasificacion"], "query": [{"key": "page", "value": "1"}, {"key": "limit", "value": "10"}]}}},
+            {"name": "Obtener cuadro_clasificacion por id", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/cuadro_clasificacion/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "cuadro_clasificacion", ":id"]}}},
+            {"name": "Crear cuadro_clasificacion", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"codigo\": \"001\", \"titulo\": \"Título ejemplo\", \"descripcion\": \"Descripción\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/cuadro_clasificacion", "host": ["{{base_url}}"], "path": ["api", "catalogs", "cuadro_clasificacion"]}}},
+            {"name": "Actualizar cuadro_clasificacion", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"titulo\": \"Título actualizado\", \"descripcion\": \"Nueva descripción\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/cuadro_clasificacion/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "cuadro_clasificacion", ":id"]}}},
+            {"name": "Eliminar cuadro_clasificacion", "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/cuadro_clasificacion/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "cuadro_clasificacion", ":id"]}}}
+          ]
+        },
+        {
+          "name": "valores_documentales",
+          "item": [
+            {"name": "Listar valores_documentales", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/valores_documentales?page=1&limit=10", "host": ["{{base_url}}"], "path": ["api", "catalogs", "valores_documentales"], "query": [{"key": "page", "value": "1"}, {"key": "limit", "value": "10"}]}}},
+            {"name": "Obtener valores_documentales por id", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/valores_documentales/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "valores_documentales", ":id"]}}},
+            {"name": "Crear valores_documentales", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"clave\": \"administrativo\", \"nombre\": \"Administrativo\", \"descripcion\": \"Descripción\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/valores_documentales", "host": ["{{base_url}}"], "path": ["api", "catalogs", "valores_documentales"]}}},
+            {"name": "Actualizar valores_documentales", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"nombre\": \"Nuevo nombre\", \"descripcion\": \"Nueva descripción\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/valores_documentales/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "valores_documentales", ":id"]}}},
+            {"name": "Eliminar valores_documentales", "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/valores_documentales/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "valores_documentales", ":id"]}}}
+          ]
+        },
+        {
+          "name": "plazos_conservacion",
+          "item": [
+            {"name": "Listar plazos_conservacion", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/plazos_conservacion?page=1&limit=10", "host": ["{{base_url}}"], "path": ["api", "catalogs", "plazos_conservacion"], "query": [{"key": "page", "value": "1"}, {"key": "limit", "value": "10"}]}}},
+            {"name": "Obtener plazos_conservacion por id", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/plazos_conservacion/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "plazos_conservacion", ":id"]}}},
+            {"name": "Crear plazos_conservacion", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"clave\": \"5\", \"descripcion\": \"5 años\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/plazos_conservacion", "host": ["{{base_url}}"], "path": ["api", "catalogs", "plazos_conservacion"]}}},
+            {"name": "Actualizar plazos_conservacion", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"descripcion\": \"10 años\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/plazos_conservacion/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "plazos_conservacion", ":id"]}}},
+            {"name": "Eliminar plazos_conservacion", "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/plazos_conservacion/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "plazos_conservacion", ":id"]}}}
+          ]
+        },
+        {
+          "name": "destinos_finales",
+          "item": [
+            {"name": "Listar destinos_finales", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/destinos_finales?page=1&limit=10", "host": ["{{base_url}}"], "path": ["api", "catalogs", "destinos_finales"], "query": [{"key": "page", "value": "1"}, {"key": "limit", "value": "10"}]}}},
+            {"name": "Obtener destinos_finales por id", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/destinos_finales/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "destinos_finales", ":id"]}}},
+            {"name": "Crear destinos_finales", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"clave\": \"conservacion_permanente\", \"nombre\": \"Conservación Permanente\", \"descripcion\": \"Descripción\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/destinos_finales", "host": ["{{base_url}}"], "path": ["api", "catalogs", "destinos_finales"]}}},
+            {"name": "Actualizar destinos_finales", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"nombre\": \"Nuevo destino\", \"descripcion\": \"Nueva descripción\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/destinos_finales/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "destinos_finales", ":id"]}}},
+            {"name": "Eliminar destinos_finales", "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/destinos_finales/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "destinos_finales", ":id"]}}}
+          ]
+        },
+        {
+          "name": "soportes_documentales",
+          "item": [
+            {"name": "Listar soportes_documentales", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/soportes_documentales?page=1&limit=10", "host": ["{{base_url}}"], "path": ["api", "catalogs", "soportes_documentales"], "query": [{"key": "page", "value": "1"}, {"key": "limit", "value": "10"}]}}},
+            {"name": "Obtener soportes_documentales por id", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/soportes_documentales/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "soportes_documentales", ":id"]}}},
+            {"name": "Crear soportes_documentales", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"clave\": \"original_digital\", \"nombre\": \"Original Digital\", \"descripcion\": \"Descripción\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/soportes_documentales", "host": ["{{base_url}}"], "path": ["api", "catalogs", "soportes_documentales"]}}},
+            {"name": "Actualizar soportes_documentales", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{ \"nombre\": \"Soporte actualizado\", \"descripcion\": \"Nueva descripción\" }"}, "url": {"raw": "{{base_url}}/api/catalogs/soportes_documentales/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "soportes_documentales", ":id"]}}},
+            {"name": "Eliminar soportes_documentales", "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}/api/catalogs/soportes_documentales/:id", "host": ["{{base_url}}"], "path": ["api", "catalogs", "soportes_documentales", ":id"]}}}
+          ]
+        }
       ]
     }
   ],

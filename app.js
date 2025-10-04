@@ -30,6 +30,11 @@ const authRoutes = require('./src/routes/auth');
 const { verifyToken } = require('./src/middleware/auth');
 const tiposDocumentosRoutes = require("./src/routes/tiposDocumentos");
 const favoritosRoutes = require("./src/routes/favoritos");
+const cuadroClasificacionRoutes = require('./src/routes/cuadroClasificacion');
+const valoresDocumentalesRoutes = require('./src/routes/valoresDocumentales');
+const plazosConservacionRoutes = require('./src/routes/plazosConservacion');
+const destinosFinalesRoutes = require('./src/routes/destinosFinales');
+const soportesDocumentalesRoutes = require('./src/routes/soportesDocumentales');
 
 // Montar /api/auth primero (debe permanecer público para login/register)
 app.use('/api/auth', authRoutes);
@@ -48,6 +53,11 @@ app.use("/api/bitacora", bitacoraRoutes.router || bitacoraRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/departamentos', departamentosRoutes);
 app.use('/api/favoritos', favoritosRoutes);
+app.use('/api/catalogs/cuadro_clasificacion', cuadroClasificacionRoutes);
+app.use('/api/catalogs/valores_documentales', valoresDocumentalesRoutes);
+app.use('/api/catalogs/plazos_conservacion', plazosConservacionRoutes);
+app.use('/api/catalogs/destinos_finales', destinosFinalesRoutes);
+app.use('/api/catalogs/soportes_documentales', soportesDocumentalesRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
